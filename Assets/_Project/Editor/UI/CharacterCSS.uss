@@ -1,0 +1,5 @@
+#app {
+    transition-property: opacity, opacity;
+    transition-duration: 0.25s, 0.25s;
+    transition-delay: 100s, 0s;
+}

@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="True">
+    <ui:VisualElement name="Container" style="flex-grow: 1; background-color: rgba(238, 200, 200, 0.05); border-top-left-radius: 10px; border-top-right-radius: 10px; border-bottom-left-radius: 10px; border-bottom-right-radius: 10px; padding-top: 1px; padding-bottom: 1px; margin-top: 0; margin-bottom: 3px;">
+        <uie:ObjectField label="Object Field" name="TransformField" data-source-type="UnityEngine.Transform, UnityEngine.CoreModule" />
+        <ui:Slider label="Slider" value="42" high-value="100" name="Weght" />
+        <ui:Slider label="Slider" value="42" high-value="100" name="Distance" />
+    </ui:VisualElement>
+</ui:UXML>
