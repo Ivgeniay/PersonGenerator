@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace Meshes.Figure.Triangles
+namespace AtomEngine.Meshes.Figure.Triangles
 {
     public struct Triangle : IFigure
     {

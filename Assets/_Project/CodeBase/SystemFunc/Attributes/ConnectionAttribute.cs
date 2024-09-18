@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace SystemFunc.Attributes
+namespace AtomEngine.SystemFunc.Attributes
 {
     [AttributeUsage(AttributeTargets.Field, Inherited = true, AllowMultiple = false)]
     public class ConnectionAttribute : Attribute

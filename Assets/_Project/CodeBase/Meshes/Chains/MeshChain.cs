@@ -6,7 +6,7 @@ using UnityEngine;
 using System.Linq;
 using System;
 
-namespace Meshes.Chains
+namespace AtomEngine.Meshes.Chains
 {
     public class MeshChain : MonoBehaviour
     {
@@ -14,7 +14,7 @@ namespace Meshes.Chains
         [SerializeField][Range(1, 100)] public int VertexCount = 1;
         [SerializeField] public float Radius = 0.25f;
         [SerializeField] private int prevVertexCount = 0;
-
+         
         private void OnEnable()
         { 
             if (Vertexes.Count == 0)

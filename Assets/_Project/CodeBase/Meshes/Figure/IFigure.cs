@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace Meshes.Figure
+namespace AtomEngine.Meshes.Figure
 {
     public interface IFigure
     {

@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace Animators
+namespace AtomEngine.Animators
 {
     public class AnimatorBuilder : MonoBehaviour
     {

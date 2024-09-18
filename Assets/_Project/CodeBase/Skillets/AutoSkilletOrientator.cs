@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
-using SystemFunc.Transforms;
+﻿using AtomEngine.SystemFunc.Transforms;
+using System.Collections.Generic; 
+using System.ComponentModel;
 using UnityEngine;
 using System.Linq;
-using System.ComponentModel;
 
-namespace Skillets
+namespace AtomEngine.Skillets
 {
     [Description("Orientates the bones of a skilet to match the bones of another skilet.")]
     public class AutoSkilletOrientator : MonoBehaviour

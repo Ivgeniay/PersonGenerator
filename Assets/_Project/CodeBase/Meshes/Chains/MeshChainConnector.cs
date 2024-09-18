@@ -1,19 +1,24 @@
-﻿using System.Collections.Generic; 
-using Meshes.MeshGenerators; 
+﻿using AtomEngine.Meshes.MeshGenerators;
+using System.Collections.Generic;
 using UnityEngine; 
 
-namespace Meshes.Chains
+namespace AtomEngine.Meshes.Chains
 {
-    [RequireComponent(typeof(MeshFilter))]
     public class MeshChainConnector : MonoBehaviour
     {
         [SerializeField] private List<MeshChain> meshChains = new List<MeshChain>();
 
         public void Connect()
         {
-            Connect(meshChains);
+            MeshFilter mf = GetComponent<MeshFilter>();
+            if (!mf)
+            {
+                Debug.LogError("MeshChainConnector: MeshFilter is null");
+                return;
+            }
+            Connect(meshChains, mf);
         }
-        public void Connect(List<MeshChain> meshChains, MeshFilter meshfilter = null)
+        public void Connect(List<MeshChain> meshChains, MeshFilter meshfilter)
         {
             if (meshChains == null || meshChains.Count == 0)
             {

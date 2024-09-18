@@ -1,119 +1,158 @@
-﻿using System.Collections.Generic;
-using SystemFunc.Attributes;
-using System.Reflection;
-using Meshes.Chains;
+﻿using AtomEngine.SystemFunc.Attributes;
+using AtomEngine.SystemFunc.Transforms;
+using AtomEngine.Testing.Inspector;
+using System.Collections.Generic;  
+using AtomEngine.Meshes.Chains;
+using AtomEngine.Meshes;
+using System.Reflection; 
 using System.Linq;
 using UnityEngine;
+using System;  
 
-namespace Skillets
+namespace AtomEngine.Skillets
 {
-    [RequireComponent(typeof(SkilletBuilder))]
-    public class MeshBuilder : MonoBehaviour
+    [RequireComponent(typeof(SkilletBuilder), typeof(MeshChainConnector))]
+    public class MeshBuilder : MonoBehaviour, IPublicMethodsInspector
     {
         [SerializeField] private Material material; 
-        [SerializeField] private MeshChainConnector chainConnector;
-        
+        public MeshChainConnector MeshChainConnector;
         public SkilletBuilder SkilletBuilder;
-        private List<Transform> meshPointsTransforms = new();
-        private IEnumerable<(Transform, FieldInfo)> bonesTransformBindedField;
-        private List<(Transform, MeshChain, FieldInfo)> bonesTransformMeshChainBindedField = new();
+
+        [SerializeField] private List<BonesTransform_MeshChain_Connection_Model> _bonesTransformBindedField = new();
+        [SerializeField] private List<Transform> meshPointsTransforms = new();
+
+        public GameObject meshRanderRoot;
 
         public void GenerateMesh()
-        {
-            FillBones(); 
-            if (!Validation()) return;
+        { 
+            if (!Validation()) return; 
 
-            GameObject meshRender = new GameObject(nameof(MeshBuilder));
-            CloneChildren(SkilletBuilder.transform, meshRender.transform);
-            meshRender.transform.SetParent(SkilletBuilder.transform);
-            MakeAtomarMeshes(); 
-            CombineMesh(SkilletBuilder.transform);
-            DestroyAtomarMeshes(meshRender);
+            FirstStep_CreateMeshRenderRoot();
+            SecondStep_Clone_Skillet_Hyerarhy_And_Attach_MeshChain();
+            ThirdStep_MakeAtomarConnection();
+            FourthStep_CombineMeshes();
+            FifthStep_DestroyAtomarMeshes();
+            SixthStep_Generate_SkinRenderer();
         }
+
+        public bool Validation()
+        {
+            FillBones();
+            if (!Validation_p())
+            {
+                Debug.LogError("Validation is not pass");
+                return false;
+            }
+            return true;
+        }
+
+        public void FirstStep_CreateMeshRenderRoot() => meshRanderRoot = new GameObject($"{nameof(MeshBuilder)}Root");
+        public void SecondStep_Clone_Skillet_Hyerarhy_And_Attach_MeshChain()
+        {
+            SkilletBuilder.transform.CloneHyerarhy(meshRanderRoot.transform, ref meshPointsTransforms);
+            Attach_RendererRefferenceTransform();
+            Attach_MeshChain_To_RenderObjects();
+            meshRanderRoot.transform.SetParent(SkilletBuilder.transform);
+        }
+        public void ThirdStep_MakeAtomarConnection() => Make_Atomar_Connection(); 
+        public void FourthStep_CombineMeshes() => CombineMesh(SkilletBuilder.transform);
+        public void FifthStep_DestroyAtomarMeshes() => DestroyAtomarMeshes(meshRanderRoot);
+        public void SixthStep_Generate_SkinRenderer() => GenerateSkinRenerer(this.transform);
+
 
         private void FillBones()
         {
             if (!SkilletBuilder) SkilletBuilder = GetComponent<SkilletBuilder>();
             meshPointsTransforms.Clear();
-            bonesTransformBindedField = SkilletBuilder.GetBoneTransforms();
-        }
-        private bool Validation()
-        {
-            if (bonesTransformBindedField == null || bonesTransformBindedField.Count() == 0)
+            _bonesTransformBindedField.Clear();
+
+            var bonesTransformBindedField = SkilletBuilder.GetBoneTransforms();
+            foreach(var Transform_FieldInfo_Pair in bonesTransformBindedField)
             {
-                Debug.LogError("No bones provided.");
-                return false;
-            }  
+                _bonesTransformBindedField.Add(new BonesTransform_MeshChain_Connection_Model()
+                {
+                    BoneTransform = Transform_FieldInfo_Pair.Item1,
+                    Connection = Transform_FieldInfo_Pair.Item2.GetCustomAttribute<ConnectionAttribute>()
+                });
+            }
+        }
+        private bool Validation_p()
+        {
+            if (MeshChainConnector == null) MeshChainConnector = GetComponent<MeshChainConnector>();
+            meshPointsTransforms.Clear();
             return true;
         }
-        private void CloneChildren(Transform source, Transform destinationParent = null)
+        
+
+        private void Attach_RendererRefferenceTransform()
         {
-            foreach (Transform child in source)
-            { 
-                if (meshPointsTransforms.Contains(source)) continue; 
-
-                GameObject newChild = new GameObject($"{child.name}(MeshBuilder)");
-
-                meshPointsTransforms.Add(newChild.transform);
-                var mChain = newChild.AddComponent<MeshChain>();
-                mChain.Initialize(4, 0.1f); 
-
-                var refer = bonesTransformBindedField.FirstOrDefault(x => x.Item1 == child).Item1;
-                if (refer != null) bonesTransformMeshChainBindedField
-                                            .Add((refer, mChain, bonesTransformBindedField
-                                                                        .FirstOrDefault(x => x.Item1 == child)
-                                                                        .Item2));
-                 
-                newChild.transform.SetParent(destinationParent); 
-                newChild.transform.localPosition = child.localPosition;
-                newChild.transform.localRotation = child.localRotation;
-                newChild.transform.localScale = child.localScale; 
-
-                CloneChildren(child, newChild.transform);
-            } 
-        }
-        private void MakeAtomarMeshes()
-        {
-            foreach (var (bone, meshChain, field) in bonesTransformMeshChainBindedField)
+            foreach (var clone in meshPointsTransforms)
             {
-                ConnectionAttribute attribute = field.GetCustomAttribute<ConnectionAttribute>();
-                if (attribute == null)
+                var refer = _bonesTransformBindedField.FirstOrDefault(x => x.BoneTransform.name == clone.name);
+                if (refer != null) refer.RenderRefferenceTransform = clone;
+            }
+        }
+        private void Attach_MeshChain_To_RenderObjects()
+        {
+            foreach(var transform in meshPointsTransforms)
+            {
+                var mChain = transform.gameObject.AddComponent<MeshChain>();
+                mChain.Initialize(4, 0.05f);
+                var refer = _bonesTransformBindedField.FirstOrDefault(x => x.RenderRefferenceTransform == transform);
+                if (refer != null) refer.MeshChain = mChain;
+            }
+        } 
+        private void Make_Atomar_Connection()
+        {
+            foreach(var model in _bonesTransformBindedField)
+            {
+                var connectionModel = _bonesTransformBindedField.FirstOrDefault(e => model.Connection.ConnectionFieldName == e.BoneTransform.name);
+
+                if (connectionModel == default)
                 {
-                    Debug.Log($"No ConnectionAttribute found for {field.Name}");
+                    Debug.Log($"No connection found for {model.BoneTransform.name}");
                     continue;
                 }
-                var connectionTupple = bonesTransformMeshChainBindedField.FirstOrDefault(e => e.Item3.Name == attribute.ConnectionFieldName);
-                if (connectionTupple == default)
+                if (connectionModel.MeshChain == null)
                 {
-                    Debug.Log($"No connection found for {field.Name}");
+                    Debug.LogError($"Нет соединения для {model.BoneTransform.name} c {model.Connection.ConnectionFieldName}");
                     continue;
                 }
 
-                MeshRenderer meshRenderer = meshChain.gameObject.AddComponent<MeshRenderer>();
-                MeshFilter meshFilter = meshChain.gameObject.AddComponent<MeshFilter>();
+                MeshRenderer meshRenderer = model.MeshChain.gameObject.AddComponent<MeshRenderer>();
+                MeshFilter meshFilter = model.MeshChain.gameObject.AddComponent<MeshFilter>();
                 meshRenderer.material = material;
-                chainConnector.Connect(new List<MeshChain>() { meshChain, connectionTupple.Item2 }, meshFilter);
+                MeshChainConnector.Connect(new List<MeshChain>() { model.MeshChain, connectionModel.MeshChain }, meshFilter);
             }
+
+            //foreach (var (bone, meshChain, field) in bonesTransformMeshChainBindedField)
+            //{
+            //    ConnectionAttribute attribute = field.GetCustomAttribute<ConnectionAttribute>();
+            //    if (attribute == null)
+            //    {
+            //        Debug.Log($"No ConnectionAttribute found for {field.Name}");
+            //        continue;
+            //    }
+            //    var connectionTupple = bonesTransformMeshChainBindedField.FirstOrDefault(e => e.Item3.Name == attribute.ConnectionFieldName);
+            //    if (connectionTupple == default)
+            //    {
+            //        Debug.Log($"No connection found for {field.Name}");
+            //        continue;
+            //    }
+
+            //    MeshRenderer meshRenderer = meshChain.gameObject.AddComponent<MeshRenderer>();
+            //    MeshFilter meshFilter = meshChain.gameObject.AddComponent<MeshFilter>();
+            //    meshRenderer.material = material;
+            //    MeshChainConnector.Connect(new List<MeshChain>() { meshChain, connectionTupple.Item2 }, meshFilter);
+            //}
         }
         private void CombineMesh(Transform root)
         {
             IEnumerable<MeshFilter> meshes = root.GetComponentsInChildren<MeshFilter>()
                                                 .Where(mf => mf.GetComponent<MeshChain>() != null);
 
-            gameObject.GetComponent<MeshFilter>();
+            Mesh combinedMesh = MeshConnector.Combine(meshes.ToArray());
 
-            CombineInstance[] combine = new CombineInstance[meshes.Count()];
-
-            int counter = 0;
-            foreach (MeshFilter item in meshes)
-            {
-                //combine[counter].mesh = item.mesh;
-                combine[counter].mesh = item.sharedMesh;
-                combine[counter].transform = item.transform.localToWorldMatrix;
-                counter++;
-            }
-            Mesh combinedMesh = new Mesh();
-            combinedMesh.CombineMeshes(combine);
             MeshFilter rootMeshFilter = root.gameObject.AddComponent<MeshFilter>();
             rootMeshFilter.mesh = combinedMesh;
             rootMeshFilter.mesh.name = "CombinedMesh";
@@ -263,5 +302,12 @@ namespace Skillets
         } 
     }
 
-    
+    [Serializable]
+    public class BonesTransform_MeshChain_Connection_Model
+    {
+        [field: SerializeField] public Transform BoneTransform { get; set; }
+        [field: SerializeField] public MeshChain MeshChain { get; set; }
+        [field: SerializeField] public Transform RenderRefferenceTransform { get; set; }
+        [field: SerializeField] public ConnectionAttribute Connection { get; set; }
+    }
 }

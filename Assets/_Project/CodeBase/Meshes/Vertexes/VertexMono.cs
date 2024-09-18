@@ -1,9 +1,8 @@
 ﻿using UnityEngine.Events;
-using UnityEditor;
 using UnityEngine;
 using System;
 
-namespace Meshes
+namespace AtomEngine.Meshes
 {
     public class VertexMono : MonoBehaviour
     {
@@ -46,23 +45,25 @@ namespace Meshes
             
             previousPosition = transform.position;
 #if UNITY_EDITOR
-            EditorApplication.update += TrackPositionChange;
+            UnityEditor.EditorApplication.update += TrackPositionChange;
 #endif
         } 
         private void OnDisable()
         {
 #if UNITY_EDITOR
-            EditorApplication.update -= TrackPositionChange;
+            UnityEditor.EditorApplication.update -= TrackPositionChange;
 #endif
         }
         private void OnValidate()
         {
             Validate();
-            if (EditorGUIUtility.GetIconForObject(this) == null)
+#if UNITY_EDITOR
+            if (UnityEditor.EditorGUIUtility.GetIconForObject(this) == null)
             { 
-                Texture2D icon = EditorGUIUtility.IconContent("Prefab Icon").image as Texture2D; 
-                EditorGUIUtility.SetIconForObject(this, icon); 
+                Texture2D icon = UnityEditor.EditorGUIUtility.IconContent("Prefab Icon").image as Texture2D;
+                UnityEditor.EditorGUIUtility.SetIconForObject(this, icon); 
             }
+#endif
         }
         private void TrackPositionChange() => Validate(); 
         private void Validate() {
@@ -78,8 +79,7 @@ namespace Meshes
             {
                 previousPosition = transform.position;
                 vertex.Position = transform.position;
-                OnVertexChangedEvent?.Invoke(vertex);
-                Debug.Log($"{gameObject} {Value}");
+                OnVertexChangedEvent?.Invoke(vertex); 
             }
         }
 

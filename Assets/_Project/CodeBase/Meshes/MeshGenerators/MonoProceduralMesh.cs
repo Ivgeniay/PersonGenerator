@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic; 
 using UnityEngine; 
 
-namespace Meshes.MeshGenerators
+namespace AtomEngine.Meshes.MeshGenerators
 {
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]

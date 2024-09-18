@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace CodeBase.SystemFunc.Math
+namespace AtomEngine.SystemFunc.Math
 {
     [System.Serializable]
     public struct IntVector3

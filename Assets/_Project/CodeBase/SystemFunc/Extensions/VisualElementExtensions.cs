@@ -2,7 +2,7 @@
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace SystemFunc.Extensions
+namespace AtomEngine.SystemFunc.Extensions
 {
     public static class VisualElementExtensions
     {

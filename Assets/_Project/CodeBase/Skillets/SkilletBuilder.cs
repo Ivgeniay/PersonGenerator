@@ -1,15 +1,16 @@
-﻿using System.Collections.Generic;
-using SystemFunc.Attributes;
-using SystemFunc.Transforms;
+﻿using AtomEngine.SystemFunc.Transforms;
+using AtomEngine.SystemFunc.Attributes;
+using System.Collections.Generic; 
+using AtomEngine.Meshes.Chains;
 using System.Reflection;
 using UnityEngine;
 using System.Linq;
 using System.Text;
 using System;
 
-namespace Skillets
+namespace AtomEngine.Skillets
 {
-    [RequireComponent(typeof(MeshBuilder))]
+    [RequireComponent(typeof(MeshBuilder), typeof(MeshChainConnector))] 
     public class SkilletBuilder : MonoBehaviour
     {
         [SerializeField] 

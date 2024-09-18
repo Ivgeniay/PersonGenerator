@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic; 
 using System.Reflection;
 using UnityEngine;
 
-namespace SystemFunc.Transforms
+namespace AtomEngine.SystemFunc.Transforms
 {
     public static class TransformExtensions
     {
@@ -23,12 +21,12 @@ namespace SystemFunc.Transforms
             }
         }
 
-        public static IEnumerable<Transform> GetAllTransformChilds(this Transform parent)
+        public static IEnumerable<Transform> GetAllTransformChilds(this Transform source)
         {
-            var count = parent.childCount;
+            var count = source.childCount;
             for (var i = 0; i < count; i++)
             {
-                var child = parent.GetChild(i);
+                var child = source.GetChild(i);
                 yield return child;
                 if (child.childCount > 0)
                 {
@@ -37,6 +35,22 @@ namespace SystemFunc.Transforms
                 }
             }
         }
+        public static void CloneHyerarhy(this Transform source, Transform destination, ref List<Transform> newTransforms)
+        {
+            foreach (Transform child in source)
+            {
+                if (newTransforms.Contains(source)) continue;
 
+                GameObject newChild = new GameObject($"{child.name}");
+                newTransforms.Add(newChild.transform); 
+
+                newChild.transform.SetParent(destination);
+                newChild.transform.localPosition = child.localPosition;
+                newChild.transform.localRotation = child.localRotation;
+                newChild.transform.localScale = child.localScale;
+
+                child.CloneHyerarhy(newChild.transform, ref newTransforms);
+            } 
+        }
     }
 }

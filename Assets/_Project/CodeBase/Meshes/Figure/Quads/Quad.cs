@@ -1,8 +1,8 @@
-﻿using System.Collections.Generic;
-using Meshes.Figure.Triangles;
+﻿using AtomEngine.Meshes.Figure.Triangles;
+using System.Collections.Generic; 
 using System.Linq;
 
-namespace Meshes.Figure.Quads
+namespace AtomEngine.Meshes.Figure.Quads
 {
     /// <summary>
     /// Квадрат рисуется исходя из направления - по часовой стрелке. 

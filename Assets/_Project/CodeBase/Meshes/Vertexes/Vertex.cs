@@ -1,9 +1,8 @@
-﻿using CodeBase.SystemFunc.Math;
-using MIConvexHull;
-using System;
+﻿using MIConvexHull;
 using UnityEngine;
+using System;
 
-namespace Meshes
+namespace AtomEngine.Meshes
 {
     [Serializable]
     public class Vertex : IVertex
