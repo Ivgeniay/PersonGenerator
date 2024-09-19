@@ -7,10 +7,12 @@ namespace AtomEngine.VisualElements
 {
     public delegate void SwitchModeType(ModeType modeType);
     public delegate void SwitchToolsType(ToolsType toolsType);
+    public delegate void SwitchHandlesOrientationType(HandlesOrientationType toolsType);
     public class GeometryTools : VisualElement
     {
         public SwitchModeType OnModeTypeChanged;
         public SwitchToolsType OnToolsTypeChanged;
+        public SwitchHandlesOrientationType OnHandlesOrientationTypeChanged;
 
         VisualElement translateToolsWrap;
         VisualElement notificationWrap;
@@ -100,8 +102,8 @@ namespace AtomEngine.VisualElements
             Label label = new Label("Tools");
             label.style.unityTextAlign = TextAnchor.UpperCenter;
 
-            VisualElement buttonWrap = new VisualElement();
-            buttonWrap.style.flexDirection = FlexDirection.Row;
+            VisualElement buttonToolsWrap = new VisualElement();
+            buttonToolsWrap.style.flexDirection = FlexDirection.Row;
 
             Button translateButton = new Button(() =>
             {
@@ -127,17 +129,33 @@ namespace AtomEngine.VisualElements
             })
             { text = "Back" };
 
-            buttonWrap.Add(backBtn);
+            //buttonToolsWrap.Add(backBtn);
+            buttonToolsWrap.Add(translateButton);
+            buttonToolsWrap.Add(rotateButton);
+            buttonToolsWrap.Add(scaleButton);
+            buttonToolsWrap.Add(backBtn);
 
+            VisualElement buttonHandlesWrap = new VisualElement();
+            buttonHandlesWrap.style.flexDirection = FlexDirection.Row;
+            Button worldButton = new Button(() =>
+            {
+                OnHandlesOrientationTypeChanged?.Invoke(HandlesOrientationType.World);
+            })
+            { text = "World" };
 
-            buttonWrap.Add(translateButton);
-            buttonWrap.Add(rotateButton);
-            buttonWrap.Add(scaleButton);
-            buttonWrap.Add(backBtn);
+            Button localBtn = new Button(() =>
+            {
+                OnHandlesOrientationTypeChanged?.Invoke(HandlesOrientationType.Local);
+            })
+            { text = "Local" };
+            buttonHandlesWrap.Add(worldButton);
+            buttonHandlesWrap.Add(localBtn);
 
             translateToolsWrap.Add(label);
-            translateToolsWrap.Add(buttonWrap);
+            translateToolsWrap.Add(buttonToolsWrap);
+            translateToolsWrap.Add(buttonHandlesWrap);
 
+            translateToolsWrap.style.flexDirection = FlexDirection.Column;
             translateToolsWrap.style.display = DisplayStyle.None;
         }
 

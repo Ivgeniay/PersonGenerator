@@ -18,6 +18,7 @@ namespace AtomEngine.Meshes.Constructor
         [SerializeField] private List<Edge> edges = new List<Edge>();
         [SerializeField] private List<Face> faces = new List<Face>();
         [SerializeField] private Vector3 previousPosition = Vector3.zero;
+        [SerializeField] MarkerConfig markerConfig = new MarkerConfig();
 
         private MeshFilter MeshFilter; 
         public Atom[] Atoms { get => atoms.ToArray(); }
@@ -28,17 +29,6 @@ namespace AtomEngine.Meshes.Constructor
                 .ToArray();}
 
         private Mesh mesh;
-        [SerializeField]
-        MarkerConfig markerConfig = new MarkerConfig()
-        {
-            SelectedWidth = .05f,
-            NonSelectedWidth = .025f,
-            SelectedColor = new Color(61, 226, 178, 150),
-            NonSelecteColor = new Color32(144, 178, 255, 20),
-            HoveredColor = Color.red,
-            DisabledColor = new Color32(144, 178, 255, 150)
-        };
-
 
         private void OnEnable()
         {

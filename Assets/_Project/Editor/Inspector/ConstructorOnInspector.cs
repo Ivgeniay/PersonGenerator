@@ -20,17 +20,31 @@ namespace AtomEngine.VisualElements
         private void SetUp_FigureCreation_Section(VisualElement root)
         {
             VisualElement createFigure = new VisualElement();
-            Button createCubeBtn = new Button(() => constructedElement.GenerateCube()) { text = "Generate Cube" };
-            Button createSphereBtn = new Button(() => constructedElement.GenerateSphere()) { text = "Generate Sphere" };
-            Button createCapsuleBtn = new Button(() => constructedElement.GenerateCapsule()) { text = "Generate Capsule" };
-            Button createPlaneBtn = new Button(() => constructedElement.GeneratePlane()) { text = "Generate Plane Cube" };
+            createFigure.style.flexDirection = FlexDirection.Column;
+
+            Button createCubeBtn = new Button(() => constructedElement.GenerateCube()) { text = "Cube" };
+            Button createSphereBtn = new Button(() => constructedElement.GenerateSphere()) { text = "Sphere" };
+            Button createCapsuleBtn = new Button(() => constructedElement.GenerateCapsule()) { text = "Capsule" };
+            Button createPlaneBtn = new Button(() => constructedElement.GeneratePlane()) { text = "Plane" };
 
             createFigure.Add(createCubeBtn);
             createFigure.Add(createSphereBtn);
             createFigure.Add(createCapsuleBtn);
             createFigure.Add(createPlaneBtn);
+
             root.Add(createFigure);
         }
+
+        private void SetUp_FaceModify(VisualElement root)
+        {
+            VisualElement faceModify = new VisualElement();
+
+            Button makeNewAtom = new Button(() => constructedElement.MakeNewAtom()) { text = "Make Atom" };
+            Button makeEdgeAtom = new Button(() => constructedElement.MakeEdgeAtom()) { text = "Make Edge" };
+
+            root.Add(faceModify);
+        }
+
         private void SetUp_AtomsList_As_Property(VisualElement root)
         {
             SerializedProperty atomsSerializedProperty = serializedObject.FindProperty("atoms");

@@ -7,12 +7,10 @@ using AtomEngine.SceneViews;
 using AtomEngine.Testing;
 using UnityEditor;
 using UnityEngine;
-using AtomEngine;
-
-using static AtomEngine.SceneViews.SceneToolsOverlay;
-using System;
-using log4net.Util;
 using System.Linq;
+using AtomEngine;
+using System; 
+using static AtomEngine.SceneViews.SceneToolsOverlay;
 
 namespace Inspector
 {
@@ -25,8 +23,9 @@ namespace Inspector
 
         public static ConstructorElementInspector Instance;
 
-        private SceneToolsOverlay.ModeType _modeType = SceneToolsOverlay.ModeType.None;
-        private SceneToolsOverlay.ToolsType _toolsType = SceneToolsOverlay.ToolsType.Translate;
+        private ModeType _modeType = ModeType.None;
+        private ToolsType _toolsType = ToolsType.Translate;
+        private HandlesOrientationType handlesOrientatiom = HandlesOrientationType.World;
         private VisualElement root; 
 
         #region Inspector
@@ -71,7 +70,7 @@ namespace Inspector
             constructedElement = (ConstructedElement)target;
             constructorOnScene = new ConstructorOnScene(constructedElement, serializedObject);
             AtomObject[] atomObjects = constructedElement.AtomObject; 
-        } 
+        }
 
         private void OnSceneGUI()
         {
@@ -80,27 +79,33 @@ namespace Inspector
             {
                 case ModeType.None: return;
                 case ModeType.Object: break;
-                case ModeType.Atom: workingType = typeof(Atom); break;
+                case ModeType.Atom: workingType = typeof(Atom); break; 
                 case ModeType.Edge: workingType = typeof(Edge); break;
                 case ModeType.Face: workingType = typeof(Face); break;
             }
 
-            AtomObject[] aObj = constructedElement.AtomObject.Where(e => e.GetType() == workingType).ToArray();
+            AtomObject[] aObj = constructorOnScene.SortAtomObjectByDistanceToCamera(
+                                    constructedElement.AtomObject
+                                    .Where(e => e.GetType() == workingType)
+                                    .ToArray());
 
+            bool isStop = false;
             for (int i = 0; i < aObj.Length; i++)
             {
+                if (isStop) break;
+
                 AtomObject atomObject = aObj[i]; 
 
                 var checker = atomObject.GetAssignableComponent<AtomEngineDistanceCheckerComponent>();
                 var outliner = atomObject.GetComponent<AtomEngineOutlineComponent>();
 
-                constructorOnScene.CheckHower(checker, outliner);
+                isStop = constructorOnScene.CheckHower(checker, outliner);
                 constructorOnScene.Handle_AtomObject_Selection(outliner); 
             }
 
             constructorOnScene.DrawMarker(aObj);
             AtomObject[] selectedAObj = aObj.Where(e => e.GetComponent<AtomEngineOutlineComponent>().IsSelected).ToArray();
-            constructorOnScene.DrawPositionHandle(_toolsType, selectedAObj);
+            constructorOnScene.DrawPositionHandle(_toolsType, handlesOrientatiom, selectedAObj);
 
             if (GUI.changed)
             {
@@ -112,6 +117,7 @@ namespace Inspector
         private void AtomObjectMoved(AtomObject atom) => constructedElement.AtomMoved(atom);
         private void AtomObjectRotate(AtomObject atom) => constructedElement.AtomRotate(atom);
 
+        
         internal void SwitchTools(SceneToolsOverlay.ToolsType toolsType)
         {
             this._toolsType = toolsType;
@@ -122,6 +128,11 @@ namespace Inspector
             this._modeType = modeType;
             SceneView.RepaintAll();
         }
+        internal void SwitchHandlesOrientationType(HandlesOrientationType handlesOrientationType)
+        {
+            handlesOrientatiom = handlesOrientationType;
+        }
+
         #endregion
 
     }
@@ -134,17 +145,21 @@ namespace AtomEngine.VisualElements
     {
         public ConstructorOnScene(ConstructedElement constructedElement, SerializedObject serializedObject) : base(constructedElement, serializedObject) { }
 
-        internal void CheckHower(AtomEngineDistanceCheckerComponent checker, AtomEngineOutlineComponent outliner)
+        internal bool CheckHower(AtomEngineDistanceCheckerComponent checker, AtomEngineOutlineComponent outliner)
         { 
             if (checker.CheckDistance(Event.current.mousePosition))
             {
-                if (!outliner.IsHovered) 
+                if (!outliner.IsHovered)
+                {
                     outliner.OnHover();
+                    return true;
+                }
             }
             else
             {
                 if (outliner.IsHovered) outliner.OnUnhover();
             }
+            return false;
         }
         internal void Handle_AtomObject_Selection(AtomEngineOutlineComponent outliner)
         {
@@ -159,6 +174,8 @@ namespace AtomEngine.VisualElements
                 e.Use();
             }
         }
+        
+        #region Draw
         internal void DrawMarker(params AtomObject[] atomObjects)
         {
             for (int i = 0; i < atomObjects.Length; i++)
@@ -187,7 +204,7 @@ namespace AtomEngine.VisualElements
                 }
             }
         } 
-        internal void DrawPositionHandle(SceneToolsOverlay.ToolsType _toolsType, params AtomObject[] atomObjects)
+        internal void DrawPositionHandle(ToolsType toolsType, HandlesOrientationType handlesOrientatiom, params AtomObject[] atomObjects)
         {
             if (atomObjects == null || atomObjects.Length == 0) return;
             Type type = atomObjects[0].GetType();
@@ -197,13 +214,13 @@ namespace AtomEngine.VisualElements
                 switch(type)
                 {
                     case Type t when t == typeof(Atom):
-                        AtomPositionHandler(_toolsType, atomObjects[0] as Atom);
+                        AtomPositionHandler(toolsType, handlesOrientatiom, atomObjects[0] as Atom);
                         break;
                     case Type t when t == typeof(Edge):
-                        EdgePositionHandler(_toolsType, atomObjects[0] as Edge);
+                        EdgePositionHandler(toolsType, handlesOrientatiom, atomObjects[0] as Edge);
                         break;
                     case Type t when t == typeof(Face):
-                        FacePositionHandler(_toolsType, atomObjects[0] as Face);
+                        FacePositionHandler(toolsType, handlesOrientatiom, atomObjects[0] as Face);
                         break;
                 } 
             }
@@ -212,27 +229,54 @@ namespace AtomEngine.VisualElements
                 switch (type)
                 {
                     case Type t when t == typeof(Atom):
-                        AtomMultiPositionHandler(_toolsType, atomObjects.Select(e => e as Atom).ToArray());
+                        AtomMultiPositionHandler(toolsType, handlesOrientatiom, atomObjects.Select(e => e as Atom).ToArray());
                         break;
                     case Type t when t == typeof(Edge):
-                        EdgeMultiPositionHandler(_toolsType, atomObjects.Select(e => e as Edge).ToArray());
+                        EdgeMultiPositionHandler(toolsType, handlesOrientatiom, atomObjects.Select(e => e as Edge).ToArray());
                         break;
                     case Type t when t == typeof(Face):
-                        FaceMultiPositionHandler(_toolsType, atomObjects[0] as Face);
+                        FaceMultiPositionHandler(toolsType, handlesOrientatiom, atomObjects[0] as Face);
                         break;
                 }
             }
         }
+        #endregion
 
-        private void AtomPositionHandler(SceneToolsOverlay.ToolsType _toolsType, Atom atom) 
+        #region Handlers
+        public Quaternion CalculateEdgeRotation(Vector3 atom1, Vector3 atom2)
         {
+            // Вектор направления вдоль ребра
+            Vector3 edgeDirection = (atom2 - atom1).normalized;
+
+            // Выбираем вспомогательный вектор (например, мировую ось вверх)
+            Vector3 up = Vector3.up;
+
+            // Если ребро почти вертикально, берем другую ось
+            if (Vector3.Dot(up, edgeDirection) > 0.99f)
+            {
+                up = Vector3.forward;
+            }
+
+            // Находим вектор, перпендикулярный к направлению ребра
+            Vector3 perpendicular = Vector3.Cross(up, edgeDirection).normalized;
+
+            // Находим вторую ось, которая завершит систему координат
+            Vector3 secondPerpendicular = Vector3.Cross(edgeDirection, perpendicular);
+
+            // Создаем кватернион на основе локальной системы координат
+            Quaternion rotation = Quaternion.LookRotation(edgeDirection, secondPerpendicular);
+
+            return rotation;
+        }
+        private void AtomPositionHandler(ToolsType _toolsType, HandlesOrientationType handlesOrientatiom, Atom atom) 
+        {
+            var transform = atom.GetComponent<AtomEngineTransform>();
             switch (_toolsType)
             {
                 case ToolsType.Translate:
-
-                    var transform = atom.GetComponent<AtomEngineTransform>();
+                     
                     Vector3 centerPosition = transform.Position;
-                    Vector3 newCenterPosition = Handles.PositionHandle(centerPosition, Quaternion.identity);
+                    Vector3 newCenterPosition = Handles.PositionHandle(centerPosition, handlesOrientatiom == HandlesOrientationType.World ? Quaternion.identity : transform.Rotation);
 
                     if (newCenterPosition != centerPosition)
                     {
@@ -243,9 +287,20 @@ namespace AtomEngine.VisualElements
                     }
 
                     break;
+
+                case ToolsType.Rotate:
+                    
+                    Quaternion newRotation = Handles.RotationHandle(transform.Rotation, transform.Position);
+                    if (newRotation != transform.Rotation)
+                    {
+                        transform.Rotation = newRotation;
+                        constructedElement.AtomRotate(atom);
+                        Undo.RecordObject(constructedElement, $"Rotated Atom");
+                    }
+                    break;
             }
         }
-        private void AtomMultiPositionHandler(SceneToolsOverlay.ToolsType _toolsType, params Atom[] atoms) 
+        private void AtomMultiPositionHandler(ToolsType _toolsType, HandlesOrientationType handlesOrientatiom, params Atom[] atoms) 
         {
             Vector3 centerPosition = Vector3.zero;
 
@@ -257,7 +312,8 @@ namespace AtomEngine.VisualElements
             switch (_toolsType)
             {
                 case ToolsType.Translate:
-                     
+
+                    //Quaternion handlesRotation = handlesOrientatiom == HandlesOrientationType.World ? Quaternion.identity : transform.Rotation;
                     Vector3 newCenterPosition = Handles.PositionHandle(centerPosition, Quaternion.identity);
                     if (newCenterPosition != centerPosition)
                     {
@@ -290,7 +346,7 @@ namespace AtomEngine.VisualElements
                     break;
             }
         }
-        private void EdgePositionHandler(SceneToolsOverlay.ToolsType _toolsType, Edge edge) 
+        private void EdgePositionHandler(ToolsType _toolsType, HandlesOrientationType handlesOrientatiom, Edge edge) 
         {
             Atom atom1 = edge.Atom;
             Atom atom2 = edge.Atom2;
@@ -301,9 +357,9 @@ namespace AtomEngine.VisualElements
                      
                     Vector3 startPos = atom1.Transform.Position;
                     Vector3 endPos = atom2.Transform.Position;
-
+                    
                     Vector3 midpoint = (startPos + endPos) / 2;
-                    Vector3 newPosition = Handles.PositionHandle(midpoint, Quaternion.identity);
+                    Vector3 newPosition = Handles.PositionHandle(midpoint, handlesOrientatiom == HandlesOrientationType.World ? Quaternion.identity : CalculateEdgeRotation(startPos, endPos));
                     Vector3 offset = newPosition - midpoint;  
 
                     if (offset != Vector3.zero)
@@ -386,7 +442,7 @@ namespace AtomEngine.VisualElements
                     break;
             }
         }
-        private void EdgeMultiPositionHandler(SceneToolsOverlay.ToolsType _toolsType, params Edge[] edges)
+        private void EdgeMultiPositionHandler(ToolsType _toolsType, HandlesOrientationType handlesOrientatiom, params Edge[] edges)
         {
             if (edges == null || edges.Length == 0) return;
 
@@ -524,7 +580,7 @@ namespace AtomEngine.VisualElements
                     break;
             }
         }
-        private void FacePositionHandler(SceneToolsOverlay.ToolsType _toolsType, Face face)
+        private void FacePositionHandler(ToolsType _toolsType, HandlesOrientationType handlesOrientatiom, Face face)
         {
             var atoms = face.Atoms;
 
@@ -538,7 +594,13 @@ namespace AtomEngine.VisualElements
                     }
                     totalPosition /= atoms.Length;
 
-                    Vector3 newTotalPosition = Handles.PositionHandle(totalPosition, Quaternion.identity);
+                    Vector3 v1 = atoms[1].Transform.Position - atoms[0].Transform.Position;
+                    Vector3 v2 = atoms[2].Transform.Position - atoms[0].Transform.Position; 
+                    Vector3 normal = Vector3.Cross(v1, v2);
+                    Quaternion rotation = Quaternion.FromToRotation(Vector3.up, normal);
+
+                    Quaternion handlesRotation = handlesOrientatiom == HandlesOrientationType.World ? Quaternion.identity : rotation;
+                    Vector3 newTotalPosition = Handles.PositionHandle(totalPosition, handlesRotation);
                     Vector3 offset = newTotalPosition - totalPosition;
 
                     if (offset != Vector3.zero)
@@ -619,7 +681,7 @@ namespace AtomEngine.VisualElements
                     break;
             }
         }
-        private void FaceMultiPositionHandler(SceneToolsOverlay.ToolsType _toolsType, params Face[] faces)
+        private void FaceMultiPositionHandler(ToolsType _toolsType, HandlesOrientationType handlesOrientatiom, params Face[] faces)
         {
             if (faces == null || faces.Length == 0) return;
 
@@ -740,6 +802,7 @@ namespace AtomEngine.VisualElements
                     break;
             }
         }
+        #endregion
 
         #region Select
         private void UpdateSelectedAO(AtomObject atomObject, AtomEngineOutlineComponent outliner, bool isMultiTab)
@@ -772,11 +835,53 @@ namespace AtomEngine.VisualElements
                 outliner.OnSelected(); 
             }
         internal void UnSelectAtomObject(AtomObject atomObject, AtomEngineOutlineComponent outliner)
-            {
-                if (atomObject is null) return;
-                outliner.OnDeselected(); 
-            }
+        {
+            if (atomObject is null) return;
+            outliner.OnDeselected();
+        }
         #endregion
+
+        #region Sort
+        public AtomObject[] SortAtomObjectByDistanceToCamera(AtomObject[] atomObjects)
+        {
+            if (atomObjects == null || atomObjects.Length == 0) return atomObjects;
+            if (atomObjects[0] is Atom atom) return SortAtomsByDistanceToCamera(atomObjects.Cast<Atom>().ToArray());
+            if (atomObjects[0] is Edge edge) return SortEdgesByDistanceToCamera(atomObjects.Cast<Edge>().ToArray());
+            if (atomObjects[0] is Face face) return SortFacesByDistanceToCamera(atomObjects.Cast<Face>().ToArray());
+
+            return atomObjects;
+        }
+        public Atom[] SortAtomsByDistanceToCamera(Atom[] atoms)
+        {
+            var camera = SceneView.lastActiveSceneView.camera;
+            return atoms.OrderBy(atom => Vector3.Distance(camera.transform.position, atom.Transform.Position)).ToArray();
+        }
+        public Edge[] SortEdgesByDistanceToCamera(Edge[] edges)
+        {
+            var camera = SceneView.lastActiveSceneView.camera;
+
+            return edges.OrderBy(edge =>
+            {
+                Vector3 midPoint = (edge.Atom.Transform.Position + edge.Atom2.Transform.Position) / 2;
+                return Vector3.Distance(camera.transform.position, midPoint);
+            }).ToArray();
+        }
+        public Face[] SortFacesByDistanceToCamera(Face[] faces)
+        {
+            var camera = SceneView.lastActiveSceneView.camera; 
+            return faces.OrderBy(face =>
+            {
+                Vector3 centroid = Vector3.zero;
+                foreach (var atom in face.Atoms)
+                {
+                    centroid += atom.Transform.Position;
+                }
+                centroid /= face.Atoms.Length;
+                return Vector3.Distance(camera.transform.position, centroid);
+            }).ToArray();
+        }
+        #endregion
+
 
         private void AtomObjectMoved(AtomObject atom) => constructedElement.AtomMoved(atom);
         private void AtomObjectRotate(AtomObject atom) => constructedElement.AtomRotate(atom);

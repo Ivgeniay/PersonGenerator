@@ -68,7 +68,7 @@ namespace AtomEngine.Components
         public float NonSelectedWidth = .05f;
         public float SelectedWidth = .025f;
         public Color SelectedColor = new Color(61, 226, 178, 150);
-        public Color NonSelecteColor = new Color32(144, 178, 255, 150);
+        public Color NonSelecteColor = new Color32(144, 178, 255, 10);
         public Color HoveredColor = Color.red;
         public Color DisabledColor = new Color32(144, 178, 255, 150); 
     }

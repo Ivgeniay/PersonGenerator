@@ -5,6 +5,7 @@ using UnityEditor.Overlays;
 using UnityEditor;
 using UnityEngine; 
 using Inspector;
+using static AtomEngine.SceneViews.SceneToolsOverlay;
 
 namespace AtomEngine.SceneViews
 {
@@ -23,6 +24,7 @@ namespace AtomEngine.SceneViews
 
             geoTools.OnModeTypeChanged += Switch_ModeType;
             geoTools.OnToolsTypeChanged += Switch_ToolsType;
+            geoTools.OnHandlesOrientationTypeChanged += Switch_HandlesOrientationType;
 
             Selection.selectionChanged += OnSelection;
 
@@ -72,8 +74,19 @@ namespace AtomEngine.SceneViews
             }
         }
 
+        private void Switch_HandlesOrientationType(HandlesOrientationType handlesOrientationType)
+        {
+            GameObject selectedGameObject = Selection.activeGameObject;
+            if (selectedGameObject != null)
+            {
+                if (ConstructorElementInspector.Instance != null)
+                    ConstructorElementInspector.Instance.SwitchHandlesOrientationType(handlesOrientationType);
+            }
+        }
+
         public enum OverlayStage { Notification, ModeType, ToolsTools }
         public enum ModeType { None, Object, Atom, Edge, Face }
         public enum ToolsType { Translate, Rotate, Scale }
+        public enum HandlesOrientationType { World, Local }
     }
 }

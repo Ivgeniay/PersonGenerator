@@ -11,11 +11,16 @@ namespace AtomEngine.Components
 
         public override bool CheckDistance(Vector3 position)
         {
-            Vector2 screenPos1 = HandleUtility.WorldToGUIPoint(positions[0]);
-            Vector2 screenPos2 = HandleUtility.WorldToGUIPoint(positions[1]); 
-            float distanceToEdge = HandleUtility.DistancePointToLineSegment(position, screenPos1, screenPos2);
+            if (parenObject is Edge edge)
+            {
+                Vector2 screenPos1 = HandleUtility.WorldToGUIPoint(edge.Atom.Transform.Position);
+                Vector2 screenPos2 = HandleUtility.WorldToGUIPoint(edge.Atom2.Transform.Position); 
+                float distanceToEdge = HandleUtility.DistancePointToLineSegment(position, screenPos1, screenPos2);
 
-            return distanceToEdge < SentityDistance; 
+                return distanceToEdge < SentityDistance; 
+            }
+
+            return false;
         }
     }
 

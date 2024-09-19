@@ -21,10 +21,13 @@ namespace AtomEngine.Components
             // Преобразуем позицию мыши в мировые координаты
             Ray mouseRay = HandleUtility.GUIPointToWorldRay(Event.current.mousePosition);
 
+            Face face = parenObject as Face;
+
+
             // Получаем нормаль плоскости через векторное произведение первых трёх вершин
-            Vector3 v0 = positions[0];
-            Vector3 v1 = positions[1];
-            Vector3 v2 = positions[2];
+            Vector3 v0 = face.Atoms[0].Transform.Position;  // positions[0];
+            Vector3 v1 = face.Atoms[1].Transform.Position;  // positions[1];
+            Vector3 v2 = face.Atoms[2].Transform.Position;  // positions[2];
 
             Vector3 normal = Vector3.Cross(v1 - v0, v2 - v0).normalized;
 
@@ -57,6 +60,8 @@ namespace AtomEngine.Components
 
             // Точка пересечения на плоскости
             Vector3 intersectionPoint = rayOrigin + t * rayDirection;
+
+            TestScr.Data(intersectionPoint);
 
             // Проверяем, находится ли точка пересечения внутри многоугольника
             return IsPointInsidePolygon(intersectionPoint);
