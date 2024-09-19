@@ -42,7 +42,7 @@ namespace AtomEngine.SceneViews.Engine
         {
             if (!showHandle)
             {
-                SceneView.duringSceneGui += OnSceneGUI;
+                //SceneView.duringSceneGui += OnSceneGUI;
                 showHandle = true;
                 SceneView.RepaintAll();
             }
@@ -51,33 +51,34 @@ namespace AtomEngine.SceneViews.Engine
         {
             if (showHandle)
             {
-                SceneView.duringSceneGui -= OnSceneGUI;
+                //SceneView.duringSceneGui -= OnSceneGUI;
                 showHandle = false;
                 SceneView.RepaintAll();
             }
         }
 
-        private static void OnSceneGUI(SceneView sceneView)
-        {
-            if (!showHandle) return;
+        //private static void OnSceneGUI(SceneView sceneView)
+        //{
+        //    if (!showHandle) return;
 
-            foreach(var atom in atoms)
-            {
-                AtomEngineTransform transform = atom.GetComponent<AtomEngineTransform>();
-                Handles.color = Color.green;
+        //    foreach(var atom in atoms)
+        //    {
+        //        //AtomEngineTransform transform = atom.GetComponent<AtomEngineTransform>();
+        //        //Handles.color = Color.green;
              
-                Handles.SphereHandleCap(0, transform.Position, Quaternion.identity, 0.05f, EventType.Repaint);
+        //        //Handles.SphereHandleCap(0, transform.Position, Quaternion.identity, 0.05f, EventType.Repaint);
 
-                Vector3 newPosition = Handles.PositionHandle(transform.Position, Quaternion.identity);
-                if (newPosition != transform.Position)
-                {
-                    transform.SetPosition(newPosition);
-                    Debug.Log("Object moved to: " + transform.Position);
-                }
+        //        //Vector3 newPosition = Handles.PositionHandle(transform.Position, Quaternion.identity);
+        //        //if (newPosition != transform.Position)
+        //        //{
+        //        //    //constructedElement.AtomObject_SetNewPosition(atom2, endPos + offset / 2);
+        //        //    //transform.SetPosition(newPosition);
+        //        //    //Debug.Log("Object moved to: " + transform.Position);
+        //        //}
 
-                // Отрисовка текстовой метки рядом с объектом
-                Handles.Label(transform.Position + Vector3.up * 0.5f, $"Atom {atom.GetComponent<AtomEngineAtomIndex>().Index}");
-            }
-        }
+        //        //// Отрисовка текстовой метки рядом с объектом
+        //        //Handles.Label(transform.Position + Vector3.up * 0.5f, $"Atom {atom.GetComponent<AtomEngineAtomIndex>().Index}");
+        //    }
+        //}
     }
 }

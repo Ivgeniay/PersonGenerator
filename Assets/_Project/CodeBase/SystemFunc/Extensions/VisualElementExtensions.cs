@@ -1,8 +1,9 @@
-﻿using System; 
+﻿using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
-namespace AtomEngine.SystemFunc.Extensions
+namespace AtomEngine
 {
     public static class VisualElementExtensions
     {
@@ -74,6 +75,25 @@ namespace AtomEngine.SystemFunc.Extensions
                     onComplete?.Invoke();
                 }
             }).Until(() => element.style.height == 0);
+        }
+
+
+        public static IEnumerable<T> FindElementsOfType<T>(this VisualElement root) where T : VisualElement 
+        {
+            foreach (var child in root.Children())
+            {
+                if (child is T typedElement)
+                {
+                    yield return typedElement;
+                }
+                if (child.childCount > 0)
+                {
+                    foreach (var element in child.FindElementsOfType<T>())
+                    {
+                        yield return element;
+                    }
+                }
+            }
         }
     }
 }

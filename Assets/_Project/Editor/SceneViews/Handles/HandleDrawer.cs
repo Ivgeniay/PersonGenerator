@@ -4,7 +4,7 @@ using UnityEngine;
 namespace AtomEngine.SceneViews
 {
     public delegate void HandleChanged(Vector3 newPosition);
-    [InitializeOnLoad]
+    //[InitializeOnLoad]
     public static class HandleDrawer
     { 
         public static event HandleChanged OnHandleChanged;

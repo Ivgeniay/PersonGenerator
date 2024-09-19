@@ -1,25 +1,33 @@
-﻿using AtomEngine.SystemFunc.Extensions;
-using AtomEngine.Meshes.Constructor;
-using UnityEditor.UIElements;
+﻿using AtomEngine.Meshes.Constructor;
+using System.Collections.Generic;
+using AtomEngine.VisualElements;
 using UnityEngine.UIElements;
 using AtomEngine.Components;
 using AtomEngine.SceneViews;
-using AtomEngine.Testing; 
+using AtomEngine.Testing;
 using UnityEditor;
 using UnityEngine;
 using AtomEngine;
+
+using static AtomEngine.SceneViews.SceneToolsOverlay;
 using System;
+using log4net.Util;
+using System.Linq;
 
 namespace Inspector
 {
+    public delegate void AtomObjectSelectedHandler(List<AtomObject> atomObjects);
+
     [CustomEditor(typeof(ConstructedElement))]
     internal class ConstructorElementInspector : TestedEditor
     {
-        public event Action<AtomObject> OnAtomSelected;
+        public AtomObjectSelectedHandler OnAtomObjectsSelected;
 
         public static ConstructorElementInspector Instance;
-        private OverlayToolsType _toolsType = OverlayToolsType.Translate;
 
+        private SceneToolsOverlay.ModeType _modeType = SceneToolsOverlay.ModeType.None;
+        private SceneToolsOverlay.ToolsType _toolsType = SceneToolsOverlay.ToolsType.Translate;
+        private VisualElement root; 
 
         #region Inspector
         public override VisualElement CreateInspectorGUI()
@@ -33,376 +41,744 @@ namespace Inspector
                 if (Selection.activeObject == null ||
                 Selection.activeObject != constructedElement)
                 {
-                    constructedElement.PreviousSelectedAtomObject = null;
-                    constructedElement.SelectedAtomObject = null;
-                    constructedElement.SelectedAtomObjects.Clear();
+                    UnselectAll();
                     Selection.selectionChanged -= OnInspectorClose;
                 }
             }
 
-            VisualElement root = new VisualElement();
+            root = new VisualElement();
 
-            SetUp_FigureCreation_Section(constructedElement, root); 
-            SetUp_AtomTransform(constructedElement, root);
-            SetUp_AtomsList_As_Property(root);
-            SetUp_EdgeList_As_Property(root);
-            SetUp_EditorSettings(constructedElement, root);
+            ConstructorOnInspector constructorOnInspector = new ConstructorOnInspector(constructedElement, serializedObject);
+            OnAtomObjectsSelected += constructorOnInspector.AtomObject_Selected_Handler;
+            root.Add(constructorOnInspector);
 
             root.Add(base.CreateInspectorGUI());
-
+            root.schedule.Execute(Update).Every(100);
             return root;
         }
-
-        private void SetUp_FigureCreation_Section(ConstructedElement constructedElement, VisualElement root)
+        private void Update()
         {
-            VisualElement createFigure = new VisualElement();
-            Button createCubeBtn = new Button(() => constructedElement.GenerateCube()) { text = "Generate Cube" };
-            Button createSphereBtn = new Button(() => constructedElement.GenerateSphere()) { text = "Generate Sphere" };
-            Button createCapsuleBtn = new Button(() => constructedElement.GenerateCapsule()) { text = "Generate Capsule" };
-            Button createPlaneBtn = new Button(() => constructedElement.GeneratePlane()) { text = "Generate Plane Cube" };
-
-            createFigure.Add(createCubeBtn);
-            createFigure.Add(createSphereBtn);
-            createFigure.Add(createCapsuleBtn);
-            createFigure.Add(createPlaneBtn);
-            root.Add(createFigure);
+            foreach (AtomView e in root.FindElementsOfType<AtomView>()) e.Update(); 
         }
-
-        private void SetUp_AtomTransform(ConstructedElement constructedElement, VisualElement root)
-        {
-            VisualElement atomTransformView = new VisualElement();
-            atomTransformView.style.opacity = 0;
-            atomTransformView.style.display = constructedElement.SelectedAtomObject is null ? DisplayStyle.None : DisplayStyle.Flex;
-            atomTransformView.StartFadeOutAnimation(0.5f, () =>
-            {
-                atomTransformView.StartFoldAnimation(50, 0.5f);
-            });
-
-
-            Vector3Field position = new Vector3Field("Position");
-            Vector3Field rotation = new Vector3Field("Rotation");
-            Vector3Field scale = new Vector3Field("Scale");
-
-            atomTransformView.Add(position);
-            atomTransformView.Add(rotation);
-            atomTransformView.Add(scale);
-
-
-            EventCallback<ChangeEvent<Vector3>> positionCallback = null;
-            EventCallback<ChangeEvent<Vector3>> rotationCallback = null;
-            EventCallback<ChangeEvent<Vector3>> scaleCallback = null;
-
-            OnAtomSelected += (atomObject) =>
-            {
-                if (atomObject is not Atom atom) return;
-
-                if (constructedElement.PreviousSelectedAtomObject != null)
-                {
-                    AtomEngineTransform prevAtomTrams = constructedElement.PreviousSelectedAtomObject.GetComponent<AtomEngineTransform>();
-                    if (positionCallback != null)
-                    {
-                        position.UnregisterValueChangedCallback(positionCallback);
-                        positionCallback = null;
-                    }
-                    if (rotationCallback != null)
-                    {
-                        rotation.UnregisterValueChangedCallback(rotationCallback);
-                        rotationCallback = null;
-                    }
-                    if (scaleCallback != null)
-                    {
-                        scale.UnregisterValueChangedCallback(scaleCallback);
-                        scaleCallback = null;
-                    }
-                }
-
-                if (atomObject != null)
-                {
-                    atomTransformView.style.display = DisplayStyle.Flex;
-                    constructedElement.PreviousSelectedAtomObject = atomObject;
-
-                    AtomEngineTransform atomTransform = atomObject.GetComponent<AtomEngineTransform>();
-                    AtomEngineAtomIndex atomIndex = atomObject.GetComponent<AtomEngineAtomIndex>();
-
-                    position.value = atomTransform.Position;
-                    rotation.value = atomTransform.Rotation.eulerAngles;
-                    scale.value = atomTransform.Scale;
-
-                    positionCallback = e => atomTransform.Position = e.newValue;
-                    rotationCallback = e => atomTransform.Rotation = Quaternion.Euler(e.newValue);
-                    scaleCallback = e => atomTransform.Scale = e.newValue;
-
-                    positionCallback = e =>
-                    {
-                        atomTransform.Position = e.newValue;
-                        AtomMoved(constructedElement, atom);
-                        SceneView.RepaintAll();
-                    };
-                    rotationCallback = e =>
-                    {
-                        atomTransform.Rotation = Quaternion.Euler(e.newValue);
-                        SceneView.RepaintAll();
-                    };
-                    scaleCallback = e =>
-                    {
-                        atomTransform.Scale = e.newValue;
-                        SceneView.RepaintAll();
-                    };
-                    position.RegisterValueChangedCallback(positionCallback);
-                    rotation.RegisterValueChangedCallback(rotationCallback);
-                    scale.RegisterValueChangedCallback(scaleCallback);
-
-                    root.schedule.Execute(() =>
-                    {
-                        position.value = atomTransform.Position;
-                        rotation.value = atomTransform.Rotation.eulerAngles;
-                        scale.value = atomTransform.Scale;
-                    })
-                    .Every(100)
-                    .Until(() => constructedElement.SelectedAtomObject == atomObject);
-
-                    atomTransformView.StartFadeInAnimation(1.5f);
-                }
-                else
-                {
-                    atomTransformView.StartFadeOutAnimation(1.5f, () =>
-                    {
-                        atomTransformView.style.display = DisplayStyle.None;
-                    });
-                }
-            };
-
-            root.Add(atomTransformView);
-        }
-
-        
-
-        private void SetUp_EditorSettings(ConstructedElement constructedElement, VisualElement root)
-        {
-            var cSharpFoldout = new Foldout { text = "GUI Settings" }; 
-
-            var nonSelectedSliderSize = new Slider("GUI non selected point size:", 0, 1, SliderDirection.Horizontal, 0.05f);
-            nonSelectedSliderSize.value = constructedElement.SelectedSphereRadius;
-            nonSelectedSliderSize.RegisterValueChangedCallback(e =>
-            {
-                var thisSlider = (Slider)e.target;
-                thisSlider.value = e.newValue;
-                constructedElement.SelectedSphereRadius = e.newValue;
-            });
-            cSharpFoldout.Add(nonSelectedSliderSize);
-
-            var selectedSliderSize = new Slider("GUI selected point size:", 0, 1, SliderDirection.Horizontal, 0.05f);
-            selectedSliderSize.value = constructedElement.NonSelectedSphereRadius;
-            selectedSliderSize.RegisterValueChangedCallback(e =>
-            {
-                var thisSlider = (Slider)e.target;
-                thisSlider.value = e.newValue;
-                constructedElement.SelectedSphereRadius = e.newValue;
-            });
-            cSharpFoldout.Add(selectedSliderSize);
-
-            var selectedColorField = new ColorField("Selected Atoms Color");
-            selectedColorField.value = constructedElement.SelectedAtomColor;
-            selectedColorField.RegisterValueChangedCallback(e =>
-            {
-                var thisField = (ColorField)e.target;
-                thisField.value = e.newValue;
-                constructedElement.SelectedAtomColor = e.newValue;
-            });
-
-            var nonSelectedColorField = new ColorField("Non Selected Atoms Color");
-            nonSelectedColorField.value = constructedElement.NonSelectedAtomColor;
-            nonSelectedColorField.RegisterValueChangedCallback(e =>
-            {
-                var thisField = (ColorField)e.target;
-                thisField.value = e.newValue;
-                constructedElement.NonSelectedAtomColor = e.newValue;
-            });
-
-
-            cSharpFoldout.Add(selectedColorField);
-            cSharpFoldout.Add(nonSelectedColorField);
-            root.Add(cSharpFoldout);
-        }
-
-        private void SetUp_AtomsList_As_Property(VisualElement root)
-        {
-            SerializedProperty atomsSerializedProperty = serializedObject.FindProperty("atoms");
-            PropertyField atomsField = new PropertyField(atomsSerializedProperty, "Atoms");
-            root.Add(atomsField);
-        }
-
-        private void SetUp_EdgeList_As_Property(VisualElement root)
-        {
-            SerializedProperty atomsSerializedProperty = serializedObject.FindProperty("edges");
-            PropertyField atomsField = new PropertyField(atomsSerializedProperty, "Edges");
-            root.Add(atomsField);
-        }
-        internal void SwitchTools(OverlayToolsType toolsType)
-        {
-            this._toolsType = toolsType;
-            SceneView.RepaintAll();
-        }
-
         #endregion
 
         #region Scene
 
+        ConstructedElement constructedElement;
+        ConstructorOnScene constructorOnScene;
+        private void OnEnable()
+        {
+            constructedElement = (ConstructedElement)target;
+            constructorOnScene = new ConstructorOnScene(constructedElement, serializedObject);
+            AtomObject[] atomObjects = constructedElement.AtomObject; 
+        } 
+
         private void OnSceneGUI()
         {
-            ConstructedElement constructedElement = (ConstructedElement)target;
-            var atoms = constructedElement.Atoms;
-
-            var selectedAtoms = constructedElement.SelectedAtomObjects;
-            bool isMultiSelection = constructedElement.SelectedAtomObjects.Count > 1;
-
-            Vector3 centerPosition = Vector3.zero;
-            Quaternion centerRotation = Quaternion.identity;
-
-            if (isMultiSelection)
+            Type workingType = null;
+            switch (_modeType)
             {
-                foreach (Atom atom in selectedAtoms)
-                {
-                    AtomEngineTransform transform = atom.GetComponent<AtomEngineTransform>();
-                    centerPosition += transform.Position;
-                }
-                centerPosition /= selectedAtoms.Count;
-
-                switch (_toolsType)
-                {
-                    case OverlayToolsType.Translate:
-                        // Создаем PositionHandle в центре всех выделенных атомов
-                        Vector3 newCenterPosition = Handles.PositionHandle(centerPosition, Quaternion.identity);
-
-                        if (newCenterPosition != centerPosition)  // Проверяем, переместился ли центр
-                        {
-                            Vector3 offset = newCenterPosition - centerPosition;  // Сдвиг центра
-                            foreach (Atom selectedAtom in selectedAtoms)
-                            {
-                                AtomEngineTransform selectedTransform = selectedAtom.GetComponent<AtomEngineTransform>();
-                                selectedTransform.SetPosition(selectedTransform.Position + offset);  // Сдвигаем каждый атом на смещение центра
-                                constructedElement.AtomMoved(selectedAtom);
-                                Undo.RecordObject(constructedElement, $"Moved Atom id: {selectedAtom.GetComponent<AtomEngineAtomIndex>().Index}");
-                            }
-                        }
-                        break;
-
-                    case OverlayToolsType.Rotate:
-                        Quaternion newCenterRotation = Handles.RotationHandle(centerRotation, centerPosition);
-
-                        if (newCenterRotation != centerRotation)
-                        {
-                            Quaternion rotationDelta = newCenterRotation * Quaternion.Inverse(centerRotation);
-                            foreach (Atom selectedAtom in selectedAtoms)
-                            {
-                                AtomEngineTransform selectedTransform = selectedAtom.GetComponent<AtomEngineTransform>();
-                                Vector3 direction = selectedTransform.Position - centerPosition;
-                                Vector3 newDirection = rotationDelta * direction;
-                                selectedTransform.SetPosition(centerPosition + newDirection);
-                                constructedElement.AtomMoved(selectedAtom);
-                                Undo.RecordObject(constructedElement, $"Rotated Atom id: {selectedAtom.GetComponent<AtomEngineAtomIndex>().Index}");
-                            }
-                        }
-                        break;
-                }
+                case ModeType.None: return;
+                case ModeType.Object: break;
+                case ModeType.Atom: workingType = typeof(Atom); break;
+                case ModeType.Edge: workingType = typeof(Edge); break;
+                case ModeType.Face: workingType = typeof(Face); break;
             }
 
-            for (int i = 0; i < atoms.Length; i++)
+            AtomObject[] aObj = constructedElement.AtomObject.Where(e => e.GetType() == workingType).ToArray();
+
+            for (int i = 0; i < aObj.Length; i++)
             {
-                Atom atom = atoms[i];
-                AtomEngineTransform transform = atom.GetComponent<AtomEngineTransform>();
-                AtomEngineAtomIndex atomIndex = atom.GetComponent<AtomEngineAtomIndex>();
-                Undo.RecordObject(constructedElement, $"Move Atom id {atomIndex.Index}");
+                AtomObject atomObject = aObj[i]; 
 
-                bool isSelected = selectedAtoms.Contains(atom);
+                var checker = atomObject.GetAssignableComponent<AtomEngineDistanceCheckerComponent>();
+                var outliner = atomObject.GetComponent<AtomEngineOutlineComponent>();
 
-                Handles.color = isSelected ? constructedElement.SelectedAtomColor : constructedElement.NonSelectedAtomColor;
-                float handlerSphereRadius = isSelected ? constructedElement.SelectedSphereRadius : constructedElement.NonSelectedSphereRadius;
-                HandleAtomSelection(constructedElement, atom);
-
-                if (isSelected && !isMultiSelection)
-                { 
-                    switch (_toolsType)
-                    {
-                        case OverlayToolsType.Translate:
-                            Vector3 newPosition = Handles.PositionHandle(transform.Position, transform.Rotation); 
-                            if (newPosition != transform.Position)
-                            {
-                                transform.SetPosition(newPosition);
-                                AtomMoved(constructedElement, atom);
-                                Undo.RecordObject(constructedElement, $"Moved Atom id: {atomIndex.Index}");
-                            }
-                            break;
-
-                        case OverlayToolsType.Rotate:
-                            Quaternion newRotation = Handles.RotationHandle(transform.Rotation, transform.Position);
-                            if (newRotation != transform.Rotation)
-                            {
-                                transform.Rotation = newRotation;
-                                AtomRotate(constructedElement, atom);
-                                Undo.RecordObject(constructedElement, $"Rotated Atom id: {atomIndex.Index}");
-                            }
-                            break;
-                    }
-                }
-
-                Handles.SphereHandleCap(0, transform.Position, Quaternion.identity, handlerSphereRadius, EventType.Repaint);
-                Handles.Label(transform.Position + Vector3.up * 0.25f, $"Atom {atom.GetComponent<AtomEngineAtomIndex>().Index}");
+                constructorOnScene.CheckHower(checker, outliner);
+                constructorOnScene.Handle_AtomObject_Selection(outliner); 
             }
-             
+
+            constructorOnScene.DrawMarker(aObj);
+            AtomObject[] selectedAObj = aObj.Where(e => e.GetComponent<AtomEngineOutlineComponent>().IsSelected).ToArray();
+            constructorOnScene.DrawPositionHandle(_toolsType, selectedAObj);
+
             if (GUI.changed)
             {
                 SceneView.RepaintAll();
             }
         }
-        private void AtomMoved(ConstructedElement constructedElement, Atom atom) => constructedElement.AtomMoved(atom);
-        private void AtomRotate(ConstructedElement constructedElement, Atom atom) => constructedElement.AtomRotate(atom);
-        private void HandleAtomSelection(ConstructedElement constructedElement, Atom atom)
+        internal void UnselectAll() => constructorOnScene.UnselectAll();
+
+        private void AtomObjectMoved(AtomObject atom) => constructedElement.AtomMoved(atom);
+        private void AtomObjectRotate(AtomObject atom) => constructedElement.AtomRotate(atom);
+
+        internal void SwitchTools(SceneToolsOverlay.ToolsType toolsType)
+        {
+            this._toolsType = toolsType;
+            SceneView.RepaintAll();
+        }
+        internal void SwitchMode(SceneToolsOverlay.ModeType modeType)
+        {
+            this._modeType = modeType;
+            SceneView.RepaintAll();
+        }
+        #endregion
+
+    }
+
+}
+
+namespace AtomEngine.VisualElements
+{
+    public class ConstructorOnScene : ConstructorElementView
+    {
+        public ConstructorOnScene(ConstructedElement constructedElement, SerializedObject serializedObject) : base(constructedElement, serializedObject) { }
+
+        internal void CheckHower(AtomEngineDistanceCheckerComponent checker, AtomEngineOutlineComponent outliner)
+        { 
+            if (checker.CheckDistance(Event.current.mousePosition))
+            {
+                if (!outliner.IsHovered) 
+                    outliner.OnHover();
+            }
+            else
+            {
+                if (outliner.IsHovered) outliner.OnUnhover();
+            }
+        }
+        internal void Handle_AtomObject_Selection(AtomEngineOutlineComponent outliner)
         {
             Event e = Event.current;
             if (e == null) return; 
-
             if (e.type == EventType.MouseDown && e.button == 0)
             {
-                Vector2 atomScreenPosition = HandleUtility.WorldToGUIPoint(atom.GetComponent<AtomEngineTransform>().Position);
-                float distance = Vector2.Distance(e.mousePosition, atomScreenPosition);
-                float selectionRadius = 10f;
-
-                if (distance < selectionRadius)
+                if (!outliner.IsHovered) return;
+                AtomObject atomObject = outliner.Parent;
+                UpdateSelectedAO(atomObject, outliner, e.shift || e.control);
+                SceneView.RepaintAll();
+                e.Use();
+            }
+        }
+        internal void DrawMarker(params AtomObject[] atomObjects)
+        {
+            for (int i = 0; i < atomObjects.Length; i++)
+            {
+                var outliner = atomObjects[i].GetComponent<AtomEngineOutlineComponent>();
+                Handles.color = outliner.IsSelected ? outliner.SelectedColor : outliner.NonSelecteColor;
+                float handlerSphereRadius = outliner.IsSelected ? outliner.SelectedWidth : outliner.NonSelectedWidth;
+                if (atomObjects[i] is Atom atom)
                 { 
-                    if (e.shift || e.control)
-                    {
-                        if (constructedElement.SelectedAtomObjects.Contains(atom)) constructedElement.SelectedAtomObjects.Remove(atom); 
-                        else constructedElement.SelectedAtomObjects.Add(atom);
-                         
-                        UpdateSelectedAtomObject(atom, constructedElement);
-                    }
-                    else
-                    { 
-                        if (constructedElement.SelectedAtomObject == atom) return;
-                        else
-                        {
-                            UpdateSelectedAtomObject(atom, constructedElement);
-                            constructedElement.SelectedAtomObjects.Clear();
-                            constructedElement.SelectedAtomObjects.Add(constructedElement.SelectedAtomObject);
-                        }
-                    } 
-                    SceneView.RepaintAll();
-                    e.Use();
+                    Handles.SphereHandleCap(0, atomObjects[i].Transform.Position, Quaternion.identity, outliner.IsSelected ? outliner.SelectedWidth : outliner.NonSelectedWidth, EventType.Repaint);
+                    Handles.Label(atomObjects[i].Transform.Position + Vector3.up * 0.25f, $"Atom {atomObjects[i].GetComponent<AtomEngineAtomIndex>().Index}");
+                }
+                if (atomObjects[i] is Edge edge)
+                {
+                    Atom atom1 = edge.Atom;
+                    Atom atom2 = edge.Atom2;
+                    Vector3 startPos = atom1.GetComponent<AtomEngineTransform>().Position;
+                    Vector3 endPos = atom2.GetComponent<AtomEngineTransform>().Position;
+                    Handles.DrawLine(startPos, endPos, handlerSphereRadius);
+                }
+                if (atomObjects[i] is Face face)
+                {
+                    Handles.color = outliner.NonSelecteColor;
+                    Vector3[] positions = face.Atoms.Select(a => a.Transform.Position).ToArray();
+                    Handles.DrawAAConvexPolygon(positions);
+                }
+            }
+        } 
+        internal void DrawPositionHandle(SceneToolsOverlay.ToolsType _toolsType, params AtomObject[] atomObjects)
+        {
+            if (atomObjects == null || atomObjects.Length == 0) return;
+            Type type = atomObjects[0].GetType();
 
-                    OnAtomSelected?.Invoke(constructedElement.SelectedAtomObject);
+            if (atomObjects.Length == 1)
+            {
+                switch(type)
+                {
+                    case Type t when t == typeof(Atom):
+                        AtomPositionHandler(_toolsType, atomObjects[0] as Atom);
+                        break;
+                    case Type t when t == typeof(Edge):
+                        EdgePositionHandler(_toolsType, atomObjects[0] as Edge);
+                        break;
+                    case Type t when t == typeof(Face):
+                        FacePositionHandler(_toolsType, atomObjects[0] as Face);
+                        break;
+                } 
+            }
+            else
+            {
+                switch (type)
+                {
+                    case Type t when t == typeof(Atom):
+                        AtomMultiPositionHandler(_toolsType, atomObjects.Select(e => e as Atom).ToArray());
+                        break;
+                    case Type t when t == typeof(Edge):
+                        EdgeMultiPositionHandler(_toolsType, atomObjects.Select(e => e as Edge).ToArray());
+                        break;
+                    case Type t when t == typeof(Face):
+                        FaceMultiPositionHandler(_toolsType, atomObjects[0] as Face);
+                        break;
                 }
             }
         }
 
-        private void UpdateSelectedAtomObject(AtomObject atomObject, ConstructedElement constructedElement)
+        private void AtomPositionHandler(SceneToolsOverlay.ToolsType _toolsType, Atom atom) 
         {
-            if (constructedElement.SelectedAtomObject == atomObject) return;
-            if (constructedElement.SelectedAtomObject != null) constructedElement.PreviousSelectedAtomObject = constructedElement.SelectedAtomObject;
-            constructedElement.SelectedAtomObject = atomObject;
+            switch (_toolsType)
+            {
+                case ToolsType.Translate:
+
+                    var transform = atom.GetComponent<AtomEngineTransform>();
+                    Vector3 centerPosition = transform.Position;
+                    Vector3 newCenterPosition = Handles.PositionHandle(centerPosition, Quaternion.identity);
+
+                    if (newCenterPosition != centerPosition)
+                    {
+                        Vector3 offset = newCenterPosition - centerPosition;  // Сдвиг центра  
+                        transform.SetPosition(atom.Transform.Position + offset);
+                        constructedElement.AtomMoved(atom);
+                        Undo.RecordObject(constructedElement, $"Moved Atom id: {atom.GetComponent<AtomEngineAtomIndex>().Index}"); 
+                    }
+
+                    break;
+            }
+        }
+        private void AtomMultiPositionHandler(SceneToolsOverlay.ToolsType _toolsType, params Atom[] atoms) 
+        {
+            Vector3 centerPosition = Vector3.zero;
+
+            foreach (Atom atom in atoms) 
+                centerPosition += atom.Transform.Position;
+            
+            centerPosition /= atoms.Length;
+
+            switch (_toolsType)
+            {
+                case ToolsType.Translate:
+                     
+                    Vector3 newCenterPosition = Handles.PositionHandle(centerPosition, Quaternion.identity);
+                    if (newCenterPosition != centerPosition)
+                    {
+                        Vector3 offset = newCenterPosition - centerPosition;
+                        foreach (Atom atom in atoms)
+                        {
+                            atom.Transform.SetPosition(atom.Transform.Position + offset);
+                            constructedElement.AtomMoved(atom);
+                            Undo.RecordObject(constructedElement, $"Moved Atom id: {atom.GetComponent<AtomEngineAtomIndex>().Index}");
+                        }
+                    }
+                    break;
+
+                case ToolsType.Rotate:
+                    Quaternion centerRotation = Quaternion.identity;
+                    Quaternion newCenterRotation = Handles.RotationHandle(centerRotation, centerPosition);
+
+                    if (newCenterRotation != centerRotation)
+                    {
+                        Quaternion rotationDelta = newCenterRotation * Quaternion.Inverse(centerRotation);
+                        foreach (Atom atom in atoms)
+                        { 
+                            Vector3 direction = atom.Transform.Position - centerPosition;
+                            Vector3 newDirection = rotationDelta * direction;
+                            atom.Transform.SetPosition(centerPosition + newDirection);
+                            constructedElement.AtomMoved(atom);
+                            Undo.RecordObject(constructedElement, $"Rotated Atom id: {atom.GetComponent<AtomEngineAtomIndex>().Index}");
+                        }
+                    }
+                    break;
+            }
+        }
+        private void EdgePositionHandler(SceneToolsOverlay.ToolsType _toolsType, Edge edge) 
+        {
+            Atom atom1 = edge.Atom;
+            Atom atom2 = edge.Atom2;
+
+            switch (_toolsType)
+            {
+                case ToolsType.Translate:
+                     
+                    Vector3 startPos = atom1.Transform.Position;
+                    Vector3 endPos = atom2.Transform.Position;
+
+                    Vector3 midpoint = (startPos + endPos) / 2;
+                    Vector3 newPosition = Handles.PositionHandle(midpoint, Quaternion.identity);
+                    Vector3 offset = newPosition - midpoint;  
+
+                    if (offset != Vector3.zero)
+                    {
+                        Undo.RecordObject(constructedElement, $"Moved Edge {edge}");
+
+                        // Перемещение обоих атомов на половину смещения грани
+                        atom1.Transform.SetPosition(startPos + offset / 2);
+                        atom2.Transform.SetPosition(endPos + offset / 2);
+
+                        constructedElement.AtomMoved(atom1);
+                        constructedElement.AtomMoved(atom2);
+                    } 
+                    break;
+
+                case ToolsType.Rotate:
+                    // Сохраняем предыдущее вращение как поле класса, чтобы отслеживать дельту вращения между кадрами
+                    Quaternion previousRotation = Quaternion.identity;
+
+                    // Определяем центральную точку между атомами
+                    Vector3 centerPos = (atom1.Transform.Position + atom2.Transform.Position) / 2;
+
+                    // Ручка для вращения вокруг центральной точки
+                    Quaternion newRotation = Handles.RotationHandle(previousRotation, centerPos);
+
+                    // Если вращение изменилось
+                    if (newRotation != previousRotation)
+                    {
+                        // Рассчитываем дельту вращения как разницу между предыдущим и текущим вращением
+                        Quaternion rotationDelta = newRotation * Quaternion.Inverse(previousRotation);
+
+                        // Применяем вращение к каждому атому относительно центральной точки
+                        Vector3 direction1 = atom1.Transform.Position - centerPos;
+                        Vector3 direction2 = atom2.Transform.Position - centerPos;
+
+                        // Вращаем атомы, смещая их позиции относительно центральной точки
+                        Vector3 newDirection1 = rotationDelta * direction1;
+                        Vector3 newDirection2 = rotationDelta * direction2;
+
+                        atom1.GetComponent<AtomEngineTransform>().SetPosition(centerPos + newDirection1);
+                        atom2.GetComponent<AtomEngineTransform>().SetPosition(centerPos + newDirection2);
+
+                        constructedElement.AtomMoved(atom1);
+                        constructedElement.AtomMoved(atom2);
+
+                        // Записываем изменение в Undo для возможности отката действий
+                        Undo.RecordObject(constructedElement, $"Rotated Edge {edge}");
+
+                        // Обновляем предыдущее вращение для следующего шага
+                        previousRotation = newRotation;
+                    }
+                    break;
+
+                case ToolsType.Scale:
+                    // Определяем начальные позиции атомов и центральную точку
+                    startPos = atom1.Transform.Position;
+                    endPos = atom2.Transform.Position;
+                    midpoint = (startPos + endPos) / 2;
+
+                    // Масштабирование через ScaleHandle, начинаем с единичного масштаба
+                    float currentDistance = Vector3.Distance(startPos, endPos);
+                    float newDistance = Handles.ScaleSlider(currentDistance, midpoint, Vector3.forward, Quaternion.identity, currentDistance, 0.1f);
+
+                    if (!Mathf.Approximately(newDistance, currentDistance))
+                    {
+                        float scaleFactor = newDistance / currentDistance;  // Определяем коэффициент масштаба
+
+                        // Перемещаем атомы относительно центральной точки, изменяя расстояние между ними
+                        Vector3 scaledOffset1 = (startPos - midpoint) * scaleFactor;
+                        Vector3 scaledOffset2 = (endPos - midpoint) * scaleFactor;
+
+                        atom1.Transform.SetPosition(midpoint + scaledOffset1);
+                        atom2.Transform.SetPosition(midpoint + scaledOffset2);
+
+                        constructedElement.AtomMoved(atom1);
+                        constructedElement.AtomMoved(atom2);
+
+                        Undo.RecordObject(constructedElement, $"Scaled Edge {edge}");
+                    }
+                    break;
+            }
+        }
+        private void EdgeMultiPositionHandler(SceneToolsOverlay.ToolsType _toolsType, params Edge[] edges)
+        {
+            if (edges == null || edges.Length == 0) return;
+
+            switch (_toolsType)
+            {
+                case ToolsType.Translate:
+                    // Вычисляем среднюю точку всех граней
+                    Vector3 totalMidpoint = Vector3.zero;
+                    foreach (var edge in edges)
+                    {
+                        Vector3 startPos = edge.Atom.Transform.Position;
+                        Vector3 endPos = edge.Atom2.Transform.Position;
+                        totalMidpoint += (startPos + endPos) / 2;
+                    }
+                    totalMidpoint /= edges.Length;
+
+                    // Отображаем PositionHandle в средней точке
+                    Vector3 newTotalMidpoint = Handles.PositionHandle(totalMidpoint, Quaternion.identity);
+                    Vector3 offset = newTotalMidpoint - totalMidpoint;
+
+                    if (offset != Vector3.zero)
+                    {
+                        // Перемещаем все атомы на половину смещения грани
+                        foreach (var edge in edges)
+                        {
+                            Atom atom1 = edge.Atom;
+                            Atom atom2 = edge.Atom2;
+
+                            Vector3 startPos = atom1.Transform.Position;
+                            Vector3 endPos = atom2.Transform.Position;
+
+                            atom1.GetComponent<AtomEngineTransform>().SetPosition(startPos + offset / 2);
+                            atom2.GetComponent<AtomEngineTransform>().SetPosition(endPos + offset / 2);
+
+                            constructedElement.AtomMoved(atom1);
+                            constructedElement.AtomMoved(atom2);
+
+                            Undo.RecordObject(constructedElement, $"Moved Edge {edge}");
+                        }
+                    }
+                    break;
+
+                case ToolsType.Rotate:
+                    // Сохраняем предыдущее вращение как поле класса, чтобы отслеживать дельту вращения между кадрами
+                    Quaternion previousRotation = Quaternion.identity;
+
+                    // Определяем центр вращения (средняя точка)
+                    Vector3 totalCenter = Vector3.zero;
+                    foreach (var edge in edges)
+                    {
+                        Vector3 startPos = edge.Atom.Transform.Position;
+                        Vector3 endPos = edge.Atom2.Transform.Position;
+                        totalCenter += (startPos + endPos) / 2;
+                    }
+                    totalCenter /= edges.Length;
+
+                    // Ручка для вращения вокруг центральной точки
+                    Quaternion newRotation = Handles.RotationHandle(previousRotation, totalCenter);
+
+                    // Если вращение изменилось
+                    if (newRotation != previousRotation)
+                    {
+                        // Рассчитываем дельту вращения
+                        Quaternion rotationDelta = newRotation * Quaternion.Inverse(previousRotation);
+
+                        // Вращаем каждую грань
+                        foreach (var edge in edges)
+                        {
+                            Atom atom1 = edge.Atom;
+                            Atom atom2 = edge.Atom2;
+
+                            // Рассчитываем направление атомов относительно центра
+                            Vector3 direction1 = atom1.Transform.Position - totalCenter;
+                            Vector3 direction2 = atom2.Transform.Position - totalCenter;
+
+                            // Применяем дельту вращения
+                            Vector3 newDirection1 = rotationDelta * direction1;
+                            Vector3 newDirection2 = rotationDelta * direction2;
+
+                            atom1.GetComponent<AtomEngineTransform>().SetPosition(totalCenter + newDirection1);
+                            atom2.GetComponent<AtomEngineTransform>().SetPosition(totalCenter + newDirection2);
+
+                            constructedElement.AtomMoved(atom1);
+                            constructedElement.AtomMoved(atom2);
+
+                            Undo.RecordObject(constructedElement, $"Rotated Edge {edge}");
+                        }
+
+                        // Обновляем предыдущее вращение
+                        previousRotation = newRotation;
+                    }
+                    break;
+
+                case ToolsType.Scale:
+                    // Вычисляем средний масштаб для всех граней
+                    Vector3 totalMidpointForScale = Vector3.zero;
+                    float totalCurrentDistance = 0f;
+                    foreach (var edge in edges)
+                    {
+                        Vector3 startPos = edge.Atom.Transform.Position;
+                        Vector3 endPos = edge.Atom2.Transform.Position;
+
+                        totalMidpointForScale += (startPos + endPos) / 2;
+                        totalCurrentDistance += Vector3.Distance(startPos, endPos);
+                    }
+                    totalMidpointForScale /= edges.Length;
+                    totalCurrentDistance /= edges.Length;
+
+                    float newDistance = Handles.ScaleSlider(totalCurrentDistance, totalMidpointForScale, Vector3.forward, Quaternion.identity, totalCurrentDistance, 0.1f);
+
+                    if (!Mathf.Approximately(newDistance, totalCurrentDistance))
+                    {
+                        float scaleFactor = newDistance / totalCurrentDistance;
+
+                        foreach (var edge in edges)
+                        {
+                            Atom atom1 = edge.Atom;
+                            Atom atom2 = edge.Atom2;
+
+                            Vector3 startPos = atom1.Transform.Position;
+                            Vector3 endPos = atom2.Transform.Position;
+
+                            Vector3 scaledOffset1 = (startPos - totalMidpointForScale) * scaleFactor;
+                            Vector3 scaledOffset2 = (endPos - totalMidpointForScale) * scaleFactor;
+
+                            atom1.GetComponent<AtomEngineTransform>().SetPosition(totalMidpointForScale + scaledOffset1);
+                            atom2.GetComponent<AtomEngineTransform>().SetPosition(totalMidpointForScale + scaledOffset2);
+
+                            constructedElement.AtomMoved(atom1);
+                            constructedElement.AtomMoved(atom2);
+
+                            Undo.RecordObject(constructedElement, $"Scaled Edge {edge}");
+                        }
+                    }
+                    break;
+            }
+        }
+        private void FacePositionHandler(SceneToolsOverlay.ToolsType _toolsType, Face face)
+        {
+            var atoms = face.Atoms;
+
+            switch (_toolsType)
+            {
+                case ToolsType.Translate:
+                    Vector3 totalPosition = Vector3.zero;
+                    foreach (var atom in atoms)
+                    {
+                        totalPosition += atom.Transform.Position;
+                    }
+                    totalPosition /= atoms.Length;
+
+                    Vector3 newTotalPosition = Handles.PositionHandle(totalPosition, Quaternion.identity);
+                    Vector3 offset = newTotalPosition - totalPosition;
+
+                    if (offset != Vector3.zero)
+                    {
+                        Undo.RecordObject(constructedElement, $"Moved Face {face}");
+
+                        foreach (var atom in atoms)
+                        {
+                            Vector3 atomPosition = atom.Transform.Position;
+                            atom.GetComponent<AtomEngineTransform>().SetPosition(atomPosition + offset);
+                            constructedElement.AtomMoved(atom);
+                        }
+                    }
+                    break;
+
+                case ToolsType.Rotate:
+                    Quaternion previousRotation = Quaternion.identity;
+
+                    Vector3 centerPosition = Vector3.zero;
+                    foreach (var atom in atoms)
+                    {
+                        centerPosition += atom.Transform.Position;
+                    }
+                    centerPosition /= atoms.Length;
+
+                    Quaternion newRotation = Handles.RotationHandle(previousRotation, centerPosition);
+
+                    if (newRotation != previousRotation)
+                    {
+                        Quaternion rotationDelta = newRotation * Quaternion.Inverse(previousRotation);
+
+                        foreach (var atom in atoms)
+                        {
+                            Vector3 direction = atom.Transform.Position - centerPosition;
+                            Vector3 newDirection = rotationDelta * direction;
+
+                            atom.GetComponent<AtomEngineTransform>().SetPosition(centerPosition + newDirection);
+                            constructedElement.AtomMoved(atom);
+                        }
+
+                        Undo.RecordObject(constructedElement, $"Rotated Face {face}");
+                        previousRotation = newRotation;
+                    }
+                    break;
+
+                case ToolsType.Scale:
+                    Vector3 centerForScale = Vector3.zero;
+                    foreach (var atom in atoms)
+                    {
+                        centerForScale += atom.Transform.Position;
+                    }
+                    centerForScale /= atoms.Length;
+
+                    float currentDistance = 0f;
+                    foreach (var atom in atoms)
+                    {
+                        currentDistance += Vector3.Distance(atom.Transform.Position, centerForScale);
+                    }
+                    currentDistance /= atoms.Length;
+
+                    float newDistance = Handles.ScaleSlider(currentDistance, centerForScale, Vector3.forward, Quaternion.identity, currentDistance, 0.1f);
+
+                    if (!Mathf.Approximately(newDistance, currentDistance))
+                    {
+                        float scaleFactor = newDistance / currentDistance;
+
+                        foreach (var atom in atoms)
+                        {
+                            Vector3 direction = atom.Transform.Position - centerForScale;
+                            Vector3 newDirection = direction * scaleFactor;
+
+                            atom.GetComponent<AtomEngineTransform>().SetPosition(centerForScale + newDirection);
+                            constructedElement.AtomMoved(atom);
+                        }
+
+                        Undo.RecordObject(constructedElement, $"Scaled Face {face}");
+                    }
+                    break;
+            }
+        }
+        private void FaceMultiPositionHandler(SceneToolsOverlay.ToolsType _toolsType, params Face[] faces)
+        {
+            if (faces == null || faces.Length == 0) return;
+
+            switch (_toolsType)
+            {
+                case ToolsType.Translate:
+                    Vector3 totalPosition = Vector3.zero;
+                    int atomCount = 0;
+                    foreach (var face in faces)
+                    {
+                        foreach (var atom in face.Atoms)
+                        {
+                            totalPosition += atom.Transform.Position;
+                            atomCount++;
+                        }
+                    }
+                    totalPosition /= atomCount;
+
+                    Vector3 newTotalPosition = Handles.PositionHandle(totalPosition, Quaternion.identity);
+                    Vector3 offset = newTotalPosition - totalPosition;
+
+                    if (offset != Vector3.zero)
+                    {
+                        foreach (var face in faces)
+                        {
+                            foreach (var atom in face.Atoms)
+                            {
+                                Vector3 atomPosition = atom.Transform.Position;
+                                atom.GetComponent<AtomEngineTransform>().SetPosition(atomPosition + offset);
+                                constructedElement.AtomMoved(atom);
+                            }
+                            Undo.RecordObject(constructedElement, $"Moved Face {face}");
+                        }
+                    }
+                    break;
+
+                case ToolsType.Rotate:
+                    Quaternion previousRotation = Quaternion.identity;
+                    Vector3 centerPosition = Vector3.zero;
+                    int totalAtoms = 0;
+
+                    foreach (var face in faces)
+                    {
+                        foreach (var atom in face.Atoms)
+                        {
+                            centerPosition += atom.Transform.Position;
+                            totalAtoms++;
+                        }
+                    }
+                    centerPosition /= totalAtoms;
+
+                    Quaternion newRotation = Handles.RotationHandle(previousRotation, centerPosition);
+
+                    if (newRotation != previousRotation)
+                    {
+                        Quaternion rotationDelta = newRotation * Quaternion.Inverse(previousRotation);
+
+                        foreach (var face in faces)
+                        {
+                            foreach (var atom in face.Atoms)
+                            {
+                                Vector3 direction = atom.Transform.Position - centerPosition;
+                                Vector3 newDirection = rotationDelta * direction;
+
+                                atom.GetComponent<AtomEngineTransform>().SetPosition(centerPosition + newDirection);
+                                constructedElement.AtomMoved(atom);
+                            }
+                            Undo.RecordObject(constructedElement, $"Rotated Face {face}");
+                        }
+
+                        previousRotation = newRotation;
+                    }
+                    break;
+
+                case ToolsType.Scale:
+                    Vector3 centerForScale = Vector3.zero;
+                    int totalAtomCount = 0;
+                    float totalCurrentDistance = 0f;
+
+                    foreach (var face in faces)
+                    {
+                        foreach (var atom in face.Atoms)
+                        {
+                            centerForScale += atom.Transform.Position;
+                            totalAtomCount++;
+                        }
+                    }
+                    centerForScale /= totalAtomCount;
+
+                    foreach (var face in faces)
+                    {
+                        foreach (var atom in face.Atoms)
+                        {
+                            totalCurrentDistance += Vector3.Distance(atom.Transform.Position, centerForScale);
+                        }
+                    }
+                    totalCurrentDistance /= totalAtomCount;
+
+                    float newDistance = Handles.ScaleSlider(totalCurrentDistance, centerForScale, Vector3.forward, Quaternion.identity, totalCurrentDistance, 0.1f);
+
+                    if (!Mathf.Approximately(newDistance, totalCurrentDistance))
+                    {
+                        float scaleFactor = newDistance / totalCurrentDistance;
+
+                        foreach (var face in faces)
+                        {
+                            foreach (var atom in face.Atoms)
+                            {
+                                Vector3 direction = atom.Transform.Position - centerForScale;
+                                Vector3 newDirection = direction * scaleFactor;
+
+                                atom.GetComponent<AtomEngineTransform>().SetPosition(centerForScale + newDirection);
+                                constructedElement.AtomMoved(atom);
+                            }
+                            Undo.RecordObject(constructedElement, $"Scaled Face {face}");
+                        }
+                    }
+                    break;
+            }
         }
 
+        #region Select
+        private void UpdateSelectedAO(AtomObject atomObject, AtomEngineOutlineComponent outliner, bool isMultiTab)
+        {
+            if (isMultiTab)
+            {
+                if (outliner.IsSelected)
+                { 
+                    UnSelectAtomObject(atomObject, outliner);
+                }
+                else
+                {
+                    SelectObjectAtom(atomObject, outliner);
+                } 
+            }
+            else
+            {
+                UnselectAll();
+                SelectObjectAtom(atomObject, outliner);
+            } 
+        }
+        internal void UnselectAll()
+            {
+                foreach (var item in constructedElement.AtomObject)
+                    item.GetComponent<AtomEngineOutlineComponent>().OnDeselected();
+            }
+        internal void SelectObjectAtom(AtomObject atomObject, AtomEngineOutlineComponent outliner)
+            {
+                if (atomObject is null) return; 
+                outliner.OnSelected(); 
+            }
+        internal void UnSelectAtomObject(AtomObject atomObject, AtomEngineOutlineComponent outliner)
+            {
+                if (atomObject is null) return;
+                outliner.OnDeselected(); 
+            }
         #endregion
 
+        private void AtomObjectMoved(AtomObject atom) => constructedElement.AtomMoved(atom);
+        private void AtomObjectRotate(AtomObject atom) => constructedElement.AtomRotate(atom);
     }
-}
+} 

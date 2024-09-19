@@ -1,5 +1,4 @@
 ﻿using AtomEngine.SystemFunc.Attributes;
-using AtomEngine.SystemFunc.Transforms;
 using AtomEngine.Testing.Inspector;
 using System.Collections.Generic;  
 using AtomEngine.Meshes.Chains;

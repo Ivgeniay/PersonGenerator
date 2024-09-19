@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using AtomEngine.Components;
+﻿using AtomEngine.Components;
 using UnityEngine;
 using System;
 
@@ -14,19 +13,21 @@ namespace AtomEngine
         public Atom Atom { get => atom; }
         public Atom Atom2 { get => atom2; }
 
-        public Edge(Atom atom, Atom atom2)
+        public Edge(Atom atom, Atom atom2) : base("Edge")
         {
             this.atom = atom;
             this.atom2 = atom2;
 
-            this.AddComponent<AtomEngineTransform>(Vector3.zero);
-            this.AddComponent<AtomEngineAtomIndex>(0);
+            this.AddComponent<AtomEngineAtomIndex>(this, 0);
+            this.AddComponent<AtomEngineLineDistanceCheckerComponent>(
+                this,
+                Atom.Transform.Position, 
+                Atom2.Transform.Position);
         }
 
-        public void Draw()
+        public override string ToString()
         {
-            Debug.DrawLine(atom.GetComponent<AtomEngineTransform>().Position, atom2.GetComponent<AtomEngineTransform>().Position, Color.red);
-            //Debug.Log("Draw");
+            return $"Edge {Atom} : {Atom2}";
         }
     }
 }
