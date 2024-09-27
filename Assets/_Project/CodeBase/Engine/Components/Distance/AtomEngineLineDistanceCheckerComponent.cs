@@ -7,11 +7,11 @@ namespace AtomEngine.Components
     [Serializable]
     public class AtomEngineLineDistanceCheckerComponent : AtomEngineDistanceCheckerComponent
     {
-        public AtomEngineLineDistanceCheckerComponent(AtomObject parenObject, Vector3 pointOne, Vector3 pointTwo) : base(parenObject, new Vector3[] { pointOne, pointTwo })  { }
+        public AtomEngineLineDistanceCheckerComponent() : base()  { }
 
         public override bool CheckDistance(Vector3 position)
         {
-            if (parenObject is Edge edge)
+            if (parentObject is Edge edge)
             {
                 Vector2 screenPos1 = HandleUtility.WorldToGUIPoint(edge.Atom.Transform.Position);
                 Vector2 screenPos2 = HandleUtility.WorldToGUIPoint(edge.Atom2.Transform.Position); 

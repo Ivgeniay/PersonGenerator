@@ -25,7 +25,7 @@ namespace AtomEngine.Components
         public bool IsSelected { get => isSelected; }
         public bool IsDisabled { get => isDisabled; }
 
-        public AtomEngineOutlineComponent(AtomObject parenObject, MarkerConfig markerModel) : base(parenObject)
+        public AtomEngineOutlineComponent(MarkerConfig markerModel) : base()
         {
             NonSelectedWidth = markerModel.NonSelectedWidth;
             SelectedWidth = markerModel.SelectedWidth;
@@ -37,28 +37,26 @@ namespace AtomEngine.Components
 
         public void OnHover()
         {
-            Debug.Log($"OnHower {parenObject}");
             isHovered = true;
-            OnHoverDelegate?.Invoke(parenObject, true);
+            OnHoverDelegate?.Invoke(parentObject, true);
         }
 
         public void OnUnhover()
         {
-            Debug.Log($"OnUnHower {parenObject}");
             isHovered = false;
-            OnHoverDelegate?.Invoke(parenObject, false);
+            OnHoverDelegate?.Invoke(parentObject, false);
         }
 
         public void OnSelected()
         {
             isSelected = true;
-            OnSelectedDelegate?.Invoke(parenObject, true);
+            OnSelectedDelegate?.Invoke(parentObject, true);
         }
 
         public void OnDeselected()
         {
             isSelected = false;
-            OnSelectedDelegate?.Invoke(parenObject, false);
+            OnSelectedDelegate?.Invoke(parentObject, false);
         }
     }
 

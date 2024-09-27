@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using UnityEngine.UIElements;
 using UnityEngine;
+using MvLib;
+
 namespace AtomEngine.VisualElements
 {
     public class AtomObjectView : AtomView
@@ -15,15 +17,16 @@ namespace AtomEngine.VisualElements
             this.aObject = aObject;
 
             VisualElement title = GetTitle(this.aObject);
-            contentContainer.Add(title);
-
+            contentContainer.Add(title); 
+            
             List<AtomEngineTransform> transforms = aObject.GetComponents<AtomEngineTransform>();
-            foreach (var el in transforms)
+            foreach (AtomEngineTransform el in transforms)
             {
-                AtomTransformView transformView = new AtomTransformView(aObject.GetComponent<AtomEngineTransform>());
+                AtomTransformView transformView = new AtomTransformView(el);
                 transformViews.Add(transformView);
                 contentContainer.Add(transformView);
             }
+
             AddStype();
         }
 

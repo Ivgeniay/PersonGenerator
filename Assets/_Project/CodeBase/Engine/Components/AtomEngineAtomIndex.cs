@@ -8,7 +8,7 @@ namespace AtomEngine.Components
     {
         [field: SerializeField] public int Index { get; set; }
          
-        public AtomEngineAtomIndex(AtomObject parenObject, int index) : base(parenObject)
+        public AtomEngineAtomIndex(int index) : base()
         {
             Index = index;
         }

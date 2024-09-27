@@ -1,6 +1,5 @@
 ﻿using AtomEngine.Components;
-using UnityEngine;
-using AtomEngine;
+using UnityEngine; 
 using System;
 using System.Linq;
 
@@ -15,10 +14,11 @@ namespace AtomEngine
         public Face(Atom[] atoms) : base("Face")
         { 
             this.atoms = atoms;
-            this.AddComponent<AtomEngineAtomIndex>(this, 0);
-            this.AddComponent<AtomEngineSquareDistanceCheckerComponent>(
-                this,
-                atoms.Select(e=> e.Transform.Position).ToArray());
+
+            AtomEngineTransform[] parameters = this.atoms.Select(e => e.Transform).ToArray();
+            transform = this.AddComponent<MultiAtomsTransform>(parameters);
+            this.AddComponent<AtomEngineAtomIndex>(0);
+            this.AddComponent<AtomEngineSquareDistanceCheckerComponent>();
         }
     }
 }

@@ -24,7 +24,7 @@ namespace AtomEngine.SceneViews.Engine
             { 
                 if (obj is UnityEngine.GameObject go)
                 {
-                    ConstructedElement constructElement = go.GetComponent<ConstructedElement>();
+                    AtomConstructed constructElement = go.GetComponent<AtomConstructed>();
                     if (constructElement)
                     {
                         atoms = constructElement.Atoms;

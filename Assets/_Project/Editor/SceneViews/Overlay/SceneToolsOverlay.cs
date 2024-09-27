@@ -52,7 +52,7 @@ namespace AtomEngine.SceneViews
         { 
             if (Selection.activeObject == null) return false;
             if (Selection.activeObject is GameObject go)
-                if (go.GetComponent<ConstructedElement>()) return true;
+                if (go.GetComponent<AtomConstructed>()) return true;
             return false;
         }
         private void Switch_ToolsType(ToolsType toolsType)
@@ -60,8 +60,10 @@ namespace AtomEngine.SceneViews
             GameObject selectedGameObject = Selection.activeGameObject;
             if (selectedGameObject != null)
             {
-                if (ConstructorElementInspector.Instance != null)
-                    ConstructorElementInspector.Instance.SwitchTools(toolsType);
+                AtomEngineSelection.SwitchToolsType(toolsType);
+
+                if (AtomConstructorInspector.Instance != null)
+                    AtomConstructorInspector.Instance.SwitchTools(toolsType);
             }
         }
         private void Switch_ModeType(ModeType modeType)
@@ -69,8 +71,10 @@ namespace AtomEngine.SceneViews
             GameObject selectedGameObject = Selection.activeGameObject;
             if (selectedGameObject != null)
             {
-                if (ConstructorElementInspector.Instance != null)
-                    ConstructorElementInspector.Instance.SwitchMode(modeType);
+                AtomEngineSelection.SwitchModeTools(modeType);
+
+                if (AtomConstructorInspector.Instance != null)
+                    AtomConstructorInspector.Instance.SwitchMode(modeType);
             }
         }
 
@@ -79,8 +83,8 @@ namespace AtomEngine.SceneViews
             GameObject selectedGameObject = Selection.activeGameObject;
             if (selectedGameObject != null)
             {
-                if (ConstructorElementInspector.Instance != null)
-                    ConstructorElementInspector.Instance.SwitchHandlesOrientationType(handlesOrientationType);
+                if (AtomConstructorInspector.Instance != null)
+                    AtomConstructorInspector.Instance.SwitchHandlesOrientationType(handlesOrientationType);
             }
         }
 

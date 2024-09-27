@@ -1,7 +1,7 @@
 ﻿using AtomEngine.Meshes.Chains;
+using MvLib.Testing.Inspector;
 using UnityEngine.UIElements; 
-using UnityEditor.UIElements;
-using AtomEngine.Testing;
+using UnityEditor.UIElements; 
 using UnityEditor;
 
 namespace AtomEngine.Meshes

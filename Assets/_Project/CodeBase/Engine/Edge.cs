@@ -18,11 +18,14 @@ namespace AtomEngine
             this.atom = atom;
             this.atom2 = atom2;
 
-            this.AddComponent<AtomEngineAtomIndex>(this, 0);
-            this.AddComponent<AtomEngineLineDistanceCheckerComponent>(
-                this,
-                Atom.Transform.Position, 
-                Atom2.Transform.Position);
+            var parameters = new AtomEngineTransform[] { atom.Transform, atom2.Transform }; 
+            transform = this.AddComponent<MultiAtomsTransform>(parameters);
+
+            this.AddComponent<AtomEngineAtomIndex>(0);
+            this.AddComponent<AtomEngineLineDistanceCheckerComponent>();
+
+            AddComponent<AtomEngineTransform>(Atom.Transform);
+            AddComponent<AtomEngineTransform>(Atom2.Transform);
         }
 
         public override string ToString()

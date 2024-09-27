@@ -1,7 +1,7 @@
-﻿using UnityEditor.UIElements;
+﻿using MvLib.Testing.Inspector;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
-using AtomEngine.Skillets;
-using AtomEngine.Testing;
+using AtomEngine.Skillets; 
 using UnityEditor;
 
 namespace AtomEngine.Skilet

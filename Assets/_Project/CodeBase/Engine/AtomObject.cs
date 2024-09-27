@@ -20,7 +20,6 @@ namespace AtomEngine
         public AtomObject(string name)
         {
             this.Name = name;
-            transform = this.AddComponent<AtomEngineTransform>(this);
             random = new System.Random();
         }
 
@@ -33,17 +32,17 @@ namespace AtomEngine
 
         public T GetAssignableComponent<T>() where T : AtomEngineComponent
         {
-            return (T)componentsStorage
-                .FirstOrDefault(e => typeof(T).IsAssignableFrom(e.Component.GetType()))
-                ?.Component;
+            var result = componentsStorage
+                .FirstOrDefault(e => typeof(T).IsAssignableFrom(e.Component.GetType()));
+            return result == null ? null : (T)result.Component; 
         }
 
         public T GetComponent<T>() where T : AtomEngineComponent
         {
             string typeStr = typeof(T).FullName;
-            return (T)componentsStorage
-                .FirstOrDefault(e => e.Type == typeStr)
-                .Component;
+            var result = componentsStorage
+                .FirstOrDefault(e => e.Type == typeStr);
+            return result == null ? null : (T)result.Component;
         }
 
         public List<T> GetComponents<T>() where T : AtomEngineComponent
@@ -55,7 +54,7 @@ namespace AtomEngine
                     .ToList();
         }
 
-        public void RemovedComponent<T>() where T : AtomEngineComponent
+        public void RemovedComponents<T>() where T : AtomEngineComponent
         {
             string typeStr = typeof(T).FullName;
             componentsStorage.RemoveAll(x => x.Type == typeStr);

@@ -9,8 +9,9 @@ namespace AtomEngine
     {
         public Atom() : base("Atom")
         {
-            this.AddComponent<AtomEngineAtomIndex>(this, 0);
-            this.AddComponent<AtomEnginePointDistanceCheckerComponent>(this);
+            transform = this.AddComponent<AtomEngineTransform>();
+            this.AddComponent<AtomEngineAtomIndex>(0);
+            this.AddComponent<AtomEnginePointDistanceCheckerComponent>();
         }
          
         public static implicit operator Vertex(Atom atom)
@@ -24,7 +25,7 @@ namespace AtomEngine
 
         public override string ToString()
         {
-            var position = this.GetComponent<AtomEngineTransform>().Position;
+            var position = transform.Position;
             var index = this.GetComponent<AtomEngineAtomIndex>().Index;
             return $"Atom id:{index} pos:{position}";
         }

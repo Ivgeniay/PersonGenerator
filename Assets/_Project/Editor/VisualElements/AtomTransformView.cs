@@ -1,5 +1,8 @@
 ﻿using UnityEngine.UIElements;
 using UnityEngine;
+using AtomEngine.Components;
+using MvLib;
+
 namespace AtomEngine.VisualElements
 {
     public class AtomTransformView : AtomView
@@ -9,16 +12,16 @@ namespace AtomEngine.VisualElements
 
         private Vector3Field position;
         private Vector3Field rotation;
-        private Vector3Field scale;
+        private Vector3Field scale; 
 
-        private EventCallback<ChangeEvent<Vector3>> positionCallback = null;
-        private EventCallback<ChangeEvent<Vector3>> rotationCallback = null;
-        private EventCallback<ChangeEvent<Vector3>> scaleCallback = null;
+        private Binder<Vector3> positionBinder;
+        private Binder<Quaternion, Vector3> rotationBinder;
+        private Binder<Vector3> scaleBinder;
 
         public AtomTransformView(AtomEngineTransform atomTransform) : base()
         {
             this.atomTransform = atomTransform;
-            contentContainer.Add(GetView());
+            contentContainer.Add(GetView(atomTransform));
             BindValue();
             BindStandartCallbacks();
             AddStype();
@@ -34,14 +37,22 @@ namespace AtomEngine.VisualElements
             contentContainer.style.borderBottomColor = new StyleColor(Color.blue);
         }
 
-        private VisualElement GetView()
+        private VisualElement GetView(AtomEngineTransform atomTransform)
         {
             VisualElement atomTransformView = new VisualElement();
+
+            Label label = new Label();
+            label.text = $"Transform ({atomTransform.Parent.Name})";
+            if (atomTransform.Parent is Atom atom)
+            {
+                label.text += $" index {atom.GetComponent<AtomEngineAtomIndex>().Index}";
+            }
 
             position = new Vector3Field("Position");
             rotation = new Vector3Field("Rotation");
             scale = new Vector3Field("Scale");
 
+            atomTransformView.Add(label);
             atomTransformView.Add(position);
             atomTransformView.Add(rotation);
             atomTransformView.Add(scale);
@@ -50,52 +61,31 @@ namespace AtomEngine.VisualElements
         }
 
         private void BindValue()
-        {
+        { 
             position.value = atomTransform.Position;
             rotation.value = atomTransform.Rotation.eulerAngles;
             scale.value = atomTransform.Scale;
-        }
+        } 
 
-        internal void BindStandartCallbacks(EventCallback<ChangeEvent<Vector3>> _positionCallback = null, EventCallback<ChangeEvent<Vector3>> _rotationCallback = null, EventCallback<ChangeEvent<Vector3>> _scaleCallback = null)
+        internal void BindStandartCallbacks()
         {
-            positionCallback = e => { atomTransform.Position = e.newValue; };
-            if (_positionCallback != null) positionCallback += _positionCallback;
+            positionBinder = new Binder<Vector3>();
+            rotationBinder = new Binder<Quaternion, Vector3>((e) => e.eulerAngles);
+            scaleBinder = new Binder<Vector3>();
 
-            rotationCallback = e => { atomTransform.Rotation = Quaternion.Euler(e.newValue); };
-            if (_rotationCallback != null) rotationCallback += _rotationCallback;
-
-            scaleCallback = e => { atomTransform.Scale = e.newValue; };
-            if (_scaleCallback != null) scaleCallback += _scaleCallback;
-
-            position.RegisterValueChangedCallback(positionCallback);
-            rotation.RegisterValueChangedCallback(rotationCallback);
-            scale.RegisterValueChangedCallback(scaleCallback);
+            positionBinder.Bind(atomTransform.ReactivePosition, position);
+            rotationBinder.Bind(atomTransform.ReactiveRotation, rotation);
+            scaleBinder.Bind(atomTransform.ReactiveScale, scale); 
         }
 
         private void UnbindCallbacks()
         {
-            if (positionCallback != null)
-            {
-                position.UnregisterValueChangedCallback(positionCallback);
-                positionCallback = null;
-            }
-            if (rotationCallback != null)
-            {
-                rotation.UnregisterValueChangedCallback(rotationCallback);
-                rotationCallback = null;
-            }
-            if (scaleCallback != null)
-            {
-                scale.UnregisterValueChangedCallback(scaleCallback);
-                scaleCallback = null;
-            }
+            positionBinder.Dispose();
+            rotationBinder.Dispose();
+            scaleBinder.Dispose(); 
         }
 
-        public override void Update()
-        {
-            BindValue();
-        }
-
+        public override void Update() { } 
         public void Hide()
         {
             contentContainer.StartFadeOutAnimation(1.5f, () =>

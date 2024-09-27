@@ -1,4 +1,4 @@
-﻿using AtomEngine.Testing.Inspector; 
+﻿using MvLib.Testing.Inspector;
 using UnityEditor;
 using UnityEngine;
 
@@ -10,7 +10,7 @@ namespace AtomEngine.Meshes.Constructor
         {
 #if UNITY_EDITOR
             GameObject go = new GameObject("GeneratedMesh");
-            go.AddComponent<ConstructedElement>();
+            go.AddComponent<AtomConstructed>();
 
             Selection.SetActiveObjectWithContext(go, null);
             if (Selection.activeTransform != null)
